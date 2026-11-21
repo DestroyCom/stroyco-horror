@@ -206,8 +206,26 @@ Tu es sinistre et cryptique, jamais explicitement violent.${n ? ` La personne qu
   },
 };
 
+/* disjoncteur : après 3 échecs ou lenteurs d'affilée, on ne sollicite plus Ollama pendant 2 min */
+let llmFails = 0;
+let llmPausedUntil = 0;
+const llmFail = () => { if (++llmFails >= 3) { llmPausedUntil = Date.now() + 120_000; llmFails = 0; console.warn('[api] Ollama trop lent ou en erreur : pause de 2 min'); } };
+
+/* préchauffage : charge le modèle en VRAM sans rien générer */
+app.post('/api/llm/warm', limit(6, 60_000, 'warm'), (_req, res) => {
+  res.status(204).end();
+  if (!OLLAMA_URL || Date.now() < llmPausedUntil) return;
+  fetch(`${OLLAMA_URL}/api/generate`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ model: OLLAMA_MODEL, keep_alive: '10m' }),
+    signal: AbortSignal.timeout(60_000),
+  }).catch(() => {});
+});
+
 app.post('/api/llm', express.json({ limit: '4kb' }), limit(30, 60_000, 'llm'), async (req, res) => {
-  if (!OLLAMA_URL) return res.status(503).json({ text: '' });
+  if (!OLLAMA_URL || Date.now() < llmPausedUntil) return res.status(503).json({ text: '' });
+  const started = Date.now();
   const persona = PERSONAS[String(req.body?.mode)];
   const text = String(req.body?.text ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 200);
   if (!persona || !text) return res.status(400).json({ text: '' });
@@ -226,16 +244,19 @@ app.post('/api/llm', express.json({ limit: '4kb' }), limit(30, 60_000, 'llm'), a
           { role: 'user', content: text },
         ],
       }),
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(7_000),
     });
     if (!r.ok) {
+      llmFail();
       console.warn(`[api] Ollama a répondu ${r.status} : ${(await r.text()).slice(0, 300)}`);
       return res.status(502).json({ text: '' });
     }
     const j = (await r.json()) as { message?: { content?: string } };
     const out = String(j.message?.content ?? '').replace(/[*_#`]/g, '').replace(/\s+/g, ' ').trim().slice(0, 300);
+    if (Date.now() - started > 5_000) llmFail(); else llmFails = 0;
     res.json({ text: out });
   } catch (err) {
+    llmFail();
     console.warn(`[api] Ollama injoignable (${OLLAMA_URL}) : ${(err as Error).message}${(err as any)?.cause ? ' — ' + (err as any).cause.message : ''}`);
     res.status(502).json({ text: '' });
   }

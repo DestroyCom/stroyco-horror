@@ -177,6 +177,8 @@ body.tear main{transform:skewX(-7deg) translateX(-14px);filter:invert(1) contras
 #camMsg{font-family:"JetBrains Mono",monospace;font-size:14px}
 #fakecur{position:fixed;left:0;top:0;width:24px;height:24px;z-index:70;pointer-events:none;display:none}
 html.nocur,html.nocur *{cursor:none!important}
+html.guided{overflow:hidden;scroll-behavior:auto}
+html.guided body{touch-action:none}
 #idle{position:fixed;left:50%;bottom:8vh;transform:translateX(-50%);z-index:56;font:clamp(20px,3vw,32px) "Special Elite",monospace;color:#d00;opacity:0;transition:opacity 1.5s;pointer-events:none;text-align:center;width:90vw}
 #ask{position:fixed;left:50%;top:22vh;transform:translateX(-50%);z-index:57;width:min(90vw,900px);text-align:center;font:clamp(24px,4vw,46px)/1.2 "Special Elite",monospace;color:#e8dcd2;text-shadow:0 0 20px #000,0 0 40px #600;opacity:0;transition:opacity 1s;pointer-events:none}
 #creep{position:fixed;left:50%;top:50%;width:min(70vmin,600px);z-index:54;pointer-events:none;opacity:0;transform:translate(-50%,-50%) scale(.2);transition:opacity 12s linear,transform 14s ease-in}
@@ -583,7 +585,7 @@ const clamp=(v,a=0,b=1)=>Math.min(b,Math.max(a,v));
 const rnd=(a,b)=>a+Math.random()*(b-a);
 const now=()=>new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
 let audio=null,muted=false;
-let llmOK=false,geo=null,snap=null,answers={},contractBuf=null,forbiddenState='—',scene=null,nextSceneAt=0,voiceHook=null,serverOK=false,selfUntil=0,myScream=null,myScreamAt='',utterances=[],ring=null,ringPos=0,knockMode=false;
+let guided=false,guidedRan=false,startedOnce=false,chatDone=false,termDone=false,llmOK=false,geo=null,snap=null,answers={},contractBuf=null,forbiddenState='—',scene=null,nextSceneAt=0,voiceHook=null,serverOK=false,selfUntil=0,myScream=null,myScreamAt='',utterances=[],ring=null,ringPos=0,knockMode=false;
 const API='/api',selfNoise=ms=>{selfUntil=Math.max(selfUntil,Date.now()+ms)};
 const pick=a=>a[Math.random()*a.length|0];
 let NAME='toi';try{NAME=localStorage.getItem('stroy-name')||'toi'}catch(e){}
@@ -717,7 +719,7 @@ const chat=document.getElementById('chat'), typing=document.getElementById('typi
 const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
 let chatStarted=false;
 function runChat(i=0){
-  if(i>=script.length){typing.textContent=NAME+' est en train d’écrire…';setTimeout(live,6000);return}
+  if(i>=script.length){chatDone=true;typing.textContent=NAME+' est en train d’écrire…';setTimeout(live,6000);return}
   const[k,txt,wait,red]=script[i],u=U[k];
   typing.textContent=k!=='bot'?u[0]+' est en train d’écrire…':'';
   setTimeout(()=>{
@@ -783,7 +785,7 @@ let T=[];const getT=()=>[
 ];
 const term=document.getElementById('term');let termStarted=false;
 function typeTerm(i=0,c=0,html=''){
-  if(i>=T.length){term.innerHTML=html+'<span class="caret"></span>';return}
+  if(i>=T.length){termDone=true;term.innerHTML=html+'<span class="caret"></span>';return}
   const[line,cls]=T[i];
   if(cls){html+=`<span class="${cls}">${line}</span>\n`;term.innerHTML=html+'<span class="caret"></span>';return setTimeout(()=>typeTerm(i+1,0,html),reduce?50:rnd(250,700))}
   if(c<=line.length){term.innerHTML=html+line.slice(0,c)+'<span class="caret"></span>';return setTimeout(()=>typeTerm(i,c+1,html),reduce?2:rnd(30,90))}
@@ -1233,7 +1235,7 @@ function sign(){
   if(audio)audio.scream(.5);
   toast('Contrat « Éternité » signé. Merci pour ton nom.');
   post('bot','Nouveau membre « Éternité » : toi. Il a signé tout seul.',true);
-  setTimeout(()=>{fake.style.display='none';R.classList.remove('nocur');R.style.overflow=''},1300);
+  setTimeout(()=>{fake.style.display='none';R.classList.remove('nocur');R.style.overflow='';startGuided()},1300);
 }
 
 /* ---------- la page ne finit pas ---------- */
@@ -1247,7 +1249,7 @@ addEventListener('scroll',()=>{
   }
 },{passive:true});
 addEventListener('wheel',e=>{
-  if(reduce||p<.9||e.deltaY>=0)return;
+  if(guided||reduce||p<.9||e.deltaY>=0)return;
   if(Math.random()<.35){e.preventDefault();scrollBy(0,160)}
 },{passive:false});
 
@@ -1734,13 +1736,18 @@ setInterval(()=>{
 },1000);
 
 /* --- petit LLM (si l'API en a un), sinon réponses écrites à la main --- */
+let llmSlow=0;
 async function llm(mode,text){
   if(!llmOK)return null;
+  const t0=Date.now();
+  const slow=()=>{if(++llmSlow>=2){llmOK=false;dbg('LLM trop lent : réponses écrites pour le reste de la visite')}};
   try{
-    const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),14000);
+    const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),mode==='ouija'?5000:6500);
     const r=await fetch(API+'/llm',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({mode,text,name:named()?NAME:''}),signal:ctl.signal});
-    clearTimeout(to);if(!r.ok)return null;const t=((await r.json()).text||'').trim();dbg('LLM',mode,'→',t);return t||null;
-  }catch(e){dbg('LLM indisponible',e);return null}
+    clearTimeout(to);if(!r.ok){slow();return null}const t=((await r.json()).text||'').trim();
+    if(Date.now()-t0>4500)slow();else llmSlow=0;
+    dbg('LLM',mode,'→',t,`(${Date.now()-t0} ms)`);return t||null;
+  }catch(e){dbg('LLM indisponible ou trop lent',e);slow();return null}
 }
 /* --- l'assistant vocal (encore gentil) --- */
 const asBtn=document.getElementById('asBtn'),orb=document.getElementById('orb'),asTxt=document.getElementById('asTxt'),asRep=document.getElementById('asRep');
@@ -1875,7 +1882,10 @@ const OJ=[
 ];
 function ojAnswer(t){
   for(const[re,fn]of OJ)if(re.test(t))return fn();
-  return pick(['REGARDE','DERRIERE TOI','ECOUTE','PLUS PRES','PAS ICI','IL VIENT','NE BOUGE PAS']);
+  return pick(['REGARDE','DERRIERE TOI','ECOUTE','PLUS PRES','PAS ICI','IL VIENT','NE BOUGE PAS',
+    'RETOURNE TOI','TROP TARD','IL SAIT','ATTENDS','SOUS TOI','LA PORTE','NE CRIE PAS','IL ECOUTE',
+    'CHUT','PAS SEUL','REGARDE EN HAUT','IL TE VOIT','RESTE','NE DORS PAS','JE SUIS LA','COMPTE','ENCORE',
+    'MENTEUR','DEMANDE LUI','TU SAIS','BIENTOT','OUVRE','ETEINS','DERRIERE LA PORTE','DANS LE MIROIR','1285']);
 }
 async function ojAsk(q){
   ojTurns++;const t=norm(q);
@@ -1917,6 +1927,86 @@ const leaveIO=new IntersectionObserver(es=>es.forEach(e=>{
 ['ouija','assist'].forEach(id=>leaveIO.observe(document.getElementById(id)));
 
 
+/* ================= le site prend le contrôle du défilement ================= */
+let glideRAF=0;
+const maxY=()=>document.documentElement.scrollHeight-innerHeight;
+const jump=y=>scrollTo({top:y,behavior:'instant'});
+function glide(y,ms){
+  return new Promise(res=>{
+    cancelAnimationFrame(glideRAF);
+    const y0=scrollY,dy=Math.max(0,Math.min(y,maxY()))-y0;
+    if(reduce||ms<=0||Math.abs(dy)<2){jump(y0+dy);return res()}
+    const t0=performance.now();
+    (function f(t){const k=Math.min(1,(t-t0)/ms),e=k<.5?2*k*k:1-((-2*k+2)**2)/2;jump(y0+dy*e);if(k<1)glideRAF=requestAnimationFrame(f);else res()})(t0);
+  });
+}
+const until=(cond,ms)=>new Promise(res=>{const t0=Date.now(),iv=setInterval(()=>{if(cond()||Date.now()-t0>ms){clearInterval(iv);res()}},250)});
+const calm=ms=>until(()=>!scene&&!knockMode&&bsod.style.display!=='block',ms);
+const topOf=el=>el.getBoundingClientRect().top+scrollY;
+async function goTo(id,ms=2200){const el=document.getElementById(id);if(!el||el.hidden)return null;await glide(topOf(el)-70,ms);return el}
+async function panThrough(el,ms){const end=topOf(el)+el.offsetHeight-innerHeight;if(end>scrollY+20)await glide(end,ms)}
+
+/* tentatives de reprendre la main */
+let escT=0;
+const ESC=['Ce n’est plus toi qui décides.','Laisse-toi faire.','Arrête de scroller. Regarde.','Patience. Il te montre le chemin.','Tu ne peux plus revenir en arrière.'];
+function blockScroll(e){
+  if(!guided)return;
+  if(e.type==='keydown'){if(e.target.closest&&e.target.closest('input,textarea'))return;if(![' ','ArrowDown','ArrowUp','PageDown','PageUp','Home','End'].includes(e.key))return}
+  e.preventDefault();e.stopImmediatePropagation();
+  if(Date.now()-escT>9000){escT=Date.now();askSay(pick(ESC),2600);buzz(80)}
+}
+addEventListener('wheel',blockScroll,{passive:false,capture:true});
+addEventListener('touchmove',blockScroll,{passive:false,capture:true});
+addEventListener('keydown',blockScroll,{capture:true});
+
+const STEPS=[
+  async()=>{await goTo('communaute');await until(()=>chatDone,45000);await sleep(4000);await calm(30000)},
+  async()=>{const el=await goTo('telechargements');await sleep(9000);if(el)await panThrough(el,3000);await calm(30000)},
+  async()=>{
+    const el=await goTo('verif');if(!el)return;
+    if(!robot.checked){askSay('Coche la case.',5000);await until(()=>robot.checked,14000);
+      if(!robot.checked){askSay('Il a coché à ta place.',3500);robot.checked=true;robot.dispatchEvent(new Event('change'))}}
+    await panThrough(el,2500);await until(()=>/resté/.test(camMsg.textContent),24000);await sleep(2500);await calm(30000);
+  },
+  async()=>{
+    const el=await goTo('contrat');if(!el)return;
+    await until(()=>scene==='contract'||S.vsigned,15000);
+    if(!S.vsigned&&scene!=='contract'){
+      ctLines.innerHTML=CT.map(f=>`<li class="ok">${esc(f())}</li>`).join('');ctBtn.hidden=true;
+      ctMsg.textContent='Tu n’as pas lu. Il a signé à ta place.';S.vsigned=now()+' (par lui)';
+      if(audio)audio.say('Tu n’as pas lu. J’ai signé à ta place.',true);await sleep(5000);
+    }else await until(()=>scene!=='contract',120000);
+    await sleep(2000);await calm(30000);
+  },
+  async()=>{const el=await goTo('serveur');await until(()=>termDone,45000);await sleep(3500);if(el)await panThrough(el,2500);await calm(30000)},
+  async()=>{const el=await goTo('dossier');if(!el)return;await sleep(4000);await panThrough(el,14000);await sleep(3000);await calm(30000)},
+  async()=>{
+    const el=await goTo('ouija');if(!el)return;await sleep(2500);
+    if(serverOK&&micAn){ojBtn.click();await until(()=>scene==='ouija',4000);await until(()=>scene!=='ouija',80000)}
+    else{ojBtn.hidden=true;ojForm.hidden=false;ojMsg.textContent='Écris ta question. Il attend.';const t0=ojTurns;await until(()=>ojTurns>=t0+2,45000);await sleep(5000)}
+    await calm(30000);
+  },
+  async()=>{const el=await goTo('reflet',3000);if(!el)return;await glide(topOf(el)+innerHeight*.35,2500);await sleep(11500);await panThrough(el,4000)},
+  async()=>{const el=await goTo('fin',2500);if(!el)return;await panThrough(el,26000);await sleep(2000);await glide(maxY(),3000);await sleep(3500)},
+  async()=>{for(let i=0;i<3;i++){await glide(maxY(),2500);await sleep(3000)}},
+];
+async function startGuided(){
+  if(guided||startedOnce&&guidedRan)return;guided=true;guidedRan=true;startedOnce=true;R.classList.add('guided');
+  askSay('À partir de maintenant, c’est lui qui choisit où tu regardes.',5000);
+  post('bot',`${who()} ne contrôle plus la page.`,true);if(audio)audio.whisper();
+  await sleep(5500);
+  for(const step of STEPS){try{await step()}catch(e){dbg('étape',e)}}
+  guided=false;R.classList.remove('guided');
+  toast('Tu peux remonter, maintenant. Si tu y arrives.');
+}
+/* sur écran tactile (pas de faux curseur) : la carte « Éternité » suffit */
+new IntersectionObserver((es,o)=>{
+  if(!es[0].isIntersecting||guided||matchMedia('(pointer:fine)').matches&&!reduce)return;
+  o.disconnect();setTimeout(startGuided,2500);
+},{threshold:.8}).observe(signBtn.closest('.price'));
+/* filet de sécurité : si on dépasse les tarifs sans que ça ait démarré */
+addEventListener('scroll',()=>{if(!guided&&!startedOnce&&topOf(document.getElementById('communaute'))<scrollY+innerHeight*.3){startedOnce=true;startGuided()}},{passive:true});
+
 /* ---------- serveur (seulement si le site est hébergé avec l'API) ---------- */
 let pushId=null;try{pushId=localStorage.getItem('stroy-push')}catch(e){}
 try{if(window.Notification&&Notification.permission==='granted')notifOK=true}catch(e){}
@@ -1933,7 +2023,8 @@ async function subscribePush(){
 }
 if(/^https?:$/.test(location.protocol)){
   fetch(API+'/health',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{
-    if(!j||!j.ok)return;serverOK=true;llmOK=!!j.llm;document.getElementById('assist').hidden=false;document.getElementById('contrat').hidden=false;
+    if(!j||!j.ok)return;serverOK=true;llmOK=!!j.llm;
+    if(llmOK)setTimeout(()=>fetch(API+'/llm/warm',{method:'POST'}).catch(()=>{}),2500);document.getElementById('assist').hidden=false;document.getElementById('contrat').hidden=false;
     if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
     if(pushId)jpost('/push/back',{id:pushId}).catch(()=>{});
     subscribePush();
