@@ -228,11 +228,15 @@ app.post('/api/llm', express.json({ limit: '4kb' }), limit(30, 60_000, 'llm'), a
       }),
       signal: AbortSignal.timeout(15_000),
     });
-    if (!r.ok) return res.status(502).json({ text: '' });
+    if (!r.ok) {
+      console.warn(`[api] Ollama a répondu ${r.status} : ${(await r.text()).slice(0, 300)}`);
+      return res.status(502).json({ text: '' });
+    }
     const j = (await r.json()) as { message?: { content?: string } };
     const out = String(j.message?.content ?? '').replace(/[*_#`]/g, '').replace(/\s+/g, ' ').trim().slice(0, 300);
     res.json({ text: out });
-  } catch {
+  } catch (err) {
+    console.warn(`[api] Ollama injoignable (${OLLAMA_URL}) : ${(err as Error).message}${(err as any)?.cause ? ' — ' + (err as any).cause.message : ''}`);
     res.status(502).json({ text: '' });
   }
 });
