@@ -206,10 +206,10 @@ Tu es sinistre et cryptique, jamais explicitement violent.${n ? ` La personne qu
   },
 };
 
-/* disjoncteur : après 3 échecs ou lenteurs d'affilée, on ne sollicite plus Ollama pendant 2 min */
+/* disjoncteur : après 3 vraies erreurs d'affilée (pas les lenteurs), pause de 30 s */
 let llmFails = 0;
 let llmPausedUntil = 0;
-const llmFail = () => { if (++llmFails >= 3) { llmPausedUntil = Date.now() + 120_000; llmFails = 0; console.warn('[api] Ollama trop lent ou en erreur : pause de 2 min'); } };
+const llmFail = () => { if (++llmFails >= 3) { llmPausedUntil = Date.now() + 30_000; llmFails = 0; console.warn('[api] Ollama en erreur 3 fois : pause de 30 s'); } };
 
 /* préchauffage : charge le modèle en VRAM sans rien générer */
 app.post('/api/llm/warm', limit(6, 60_000, 'warm'), (_req, res) => {
@@ -218,7 +218,7 @@ app.post('/api/llm/warm', limit(6, 60_000, 'warm'), (_req, res) => {
   fetch(`${OLLAMA_URL}/api/generate`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ model: OLLAMA_MODEL, keep_alive: '10m' }),
+    body: JSON.stringify({ model: OLLAMA_MODEL, keep_alive: '30m' }),
     signal: AbortSignal.timeout(60_000),
   }).catch(() => {});
 });
@@ -236,7 +236,7 @@ app.post('/api/llm', express.json({ limit: '4kb' }), limit(30, 60_000, 'llm'), a
       body: JSON.stringify({
         model: OLLAMA_MODEL,
         stream: false,
-        keep_alive: '10m',
+        keep_alive: '30m',
         // num_ctx réduit : le cache KV reste petit, utile sur un GPU 4 Go partagé avec Whisper
         options: { num_predict: persona.maxTokens, temperature: persona.temperature, num_ctx: 1024 },
         messages: [
@@ -244,7 +244,7 @@ app.post('/api/llm', express.json({ limit: '4kb' }), limit(30, 60_000, 'llm'), a
           { role: 'user', content: text },
         ],
       }),
-      signal: AbortSignal.timeout(7_000),
+      signal: AbortSignal.timeout(30_000),
     });
     if (!r.ok) {
       llmFail();
@@ -253,7 +253,8 @@ app.post('/api/llm', express.json({ limit: '4kb' }), limit(30, 60_000, 'llm'), a
     }
     const j = (await r.json()) as { message?: { content?: string } };
     const out = String(j.message?.content ?? '').replace(/[*_#`]/g, '').replace(/\s+/g, ' ').trim().slice(0, 300);
-    if (Date.now() - started > 5_000) llmFail(); else llmFails = 0;
+    llmFails = 0;
+    if (Date.now() - started > 8_000) console.warn(`[api] Ollama lent : ${Date.now() - started} ms (modèle en partie sur CPU ?)`);
     res.json({ text: out });
   } catch (err) {
     llmFail();

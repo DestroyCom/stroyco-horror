@@ -1736,18 +1736,15 @@ setInterval(()=>{
 },1000);
 
 /* --- petit LLM (si l'API en a un), sinon réponses écrites à la main --- */
-let llmSlow=0;
 async function llm(mode,text){
   if(!llmOK)return null;
   const t0=Date.now();
-  const slow=()=>{if(++llmSlow>=2){llmOK=false;dbg('LLM trop lent : réponses écrites pour le reste de la visite')}};
   try{
-    const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),mode==='ouija'?5000:6500);
+    const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),25000);
     const r=await fetch(API+'/llm',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({mode,text,name:named()?NAME:''}),signal:ctl.signal});
-    clearTimeout(to);if(!r.ok){slow();return null}const t=((await r.json()).text||'').trim();
-    if(Date.now()-t0>4500)slow();else llmSlow=0;
+    clearTimeout(to);if(!r.ok)return null;const t=((await r.json()).text||'').trim();
     dbg('LLM',mode,'→',t,`(${Date.now()-t0} ms)`);return t||null;
-  }catch(e){dbg('LLM indisponible ou trop lent',e);slow();return null}
+  }catch(e){dbg('LLM indisponible',e);return null}
 }
 /* --- l'assistant vocal (encore gentil) --- */
 const asBtn=document.getElementById('asBtn'),orb=document.getElementById('orb'),asTxt=document.getElementById('asTxt'),asRep=document.getElementById('asRep');
@@ -1794,8 +1791,9 @@ asBtn.addEventListener('click',async()=>{
     const r=await listen(10000);orb.classList.remove('on');
     if(assistStop)break;
     if(!r){asTxt.textContent=turn?'À bientôt !':'Je n’ai rien entendu. Réessaie.';break}
-    asTxt.textContent=`« ${r.text} »`;orb.classList.add('on');
-    const rep=(await llm(p<.35?'assist':'assist_dark',r.text))||assistReply(norm(r.text));orb.classList.remove('on');if(!alive(tok))break;asRep.textContent=rep;
+    asTxt.textContent=`« ${r.text} »`;orb.classList.add('on');asRep.textContent='Stroy réfléchit…';
+    const filler=setTimeout(()=>{if(audio)audio.say(pick(['Une seconde.','Laisse-moi réfléchir.','Je cherche.']),true,'clean')},3500);
+    const rep=(await llm(p<.35?'assist':'assist_dark',r.text))||assistReply(norm(r.text));clearTimeout(filler);orb.classList.remove('on');if(!alive(tok))break;asRep.textContent=rep;
     audio.say(rep,true,'clean');for(let w=0;w<Math.min(90,rep.length*.75+12)&&!assistStop;w++)await sleep(100);
   }
   orb.classList.remove('on');asBtn.disabled=false;asBtn.textContent='Reparler à Stroy';if(alive(tok))scene=null;
@@ -1890,8 +1888,13 @@ function ojAnswer(t){
 async function ojAsk(q){
   ojTurns++;const t=norm(q);
   ojMsg.textContent='…';pl.classList.add('think');
+  let wandering=true,w0=Date.now();
+  const letters=[...board.querySelectorAll('[data-k]')];
+  (async()=>{while(wandering){plTo(pick(letters));await sleep(rnd(900,1600));
+    if(wandering&&Date.now()-w0>7000&&ojMsg.textContent==='…'){ojMsg.textContent='Il cherche…';if(audio)audio.whisper()}
+    if(wandering&&Date.now()-w0>15000&&ojMsg.textContent==='Il cherche…'){ojMsg.textContent='Il hésite. Ne bouge pas.';if(audio)audio.knock(1)}}})();
   let a=/au revoir|aurevoir|bye|adieu|lucas/.test(t)?null:await llm('ouija',q);
-  pl.classList.remove('think');
+  wandering=false;pl.classList.remove('think');
   if(a){a=norm(a).toUpperCase().replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim().split(' ').slice(0,3).join(' ').slice(0,18);if(/^(OUI|NON|AU REVOIR)$/.test(a)===false&&a.length<2)a=null}
   a=a||ojAnswer(t);
   await sleep(400);
