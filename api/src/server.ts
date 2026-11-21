@@ -16,6 +16,8 @@ const CONTACT = process.env.VAPID_CONTACT ?? 'mailto:admin@example.com';
 const DATA_DIR = process.env.DATA_DIR ?? '/data';
 const OLLAMA_URL = (process.env.OLLAMA_URL ?? '').replace(/\/$/, '');
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? 'qwen2.5:1.5b';
+// Temps laissé au LLM pour répondre, en secondes. Vide = 25 s (la page masque l'attente).
+const LLM_TIMEOUT_S = Math.min(120, Math.max(2, Number(process.env.LLM_TIMEOUT) || 25));
 const VAPID_FILE = `${DATA_DIR}/vapid.json`;
 
 /* ---------- clés VAPID (générées une fois, gardées dans le volume) ---------- */
@@ -95,7 +97,7 @@ const app = express();
 app.set('trust proxy', true);
 app.disable('x-powered-by');
 
-app.get('/api/health', (_req, res) => { res.json({ ok: true, llm: !!OLLAMA_URL }); });
+app.get('/api/health', (_req, res) => { res.json({ ok: true, llm: !!OLLAMA_URL, llmTimeout: LLM_TIMEOUT_S }); });
 app.get('/api/vapid', (_req, res) => { res.json({ key: vapid.publicKey }); });
 
 app.post('/api/push/subscribe', express.json({ limit: '10kb' }), limit(10, 60_000, 'sub'), (req, res) => {
@@ -244,7 +246,7 @@ app.post('/api/llm', express.json({ limit: '4kb' }), limit(30, 60_000, 'llm'), a
           { role: 'user', content: text },
         ],
       }),
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(LLM_TIMEOUT_S * 1000),
     });
     if (!r.ok) {
       llmFail();
@@ -263,4 +265,4 @@ app.post('/api/llm', express.json({ limit: '4kb' }), limit(30, 60_000, 'llm'), a
   }
 });
 
-app.listen(PORT, () => console.log(`[api] prêt sur :${PORT} — voix : ${VOICE_URL} — LLM : ${OLLAMA_URL ? `${OLLAMA_MODEL} @ ${OLLAMA_URL}` : 'désactivé'}`));
+app.listen(PORT, () => console.log(`[api] prêt sur :${PORT} — voix : ${VOICE_URL} — LLM : ${OLLAMA_URL ? `${OLLAMA_MODEL} @ ${OLLAMA_URL}, ${LLM_TIMEOUT_S} s max` : 'désactivé'}`));

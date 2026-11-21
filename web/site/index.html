@@ -585,7 +585,7 @@ const clamp=(v,a=0,b=1)=>Math.min(b,Math.max(a,v));
 const rnd=(a,b)=>a+Math.random()*(b-a);
 const now=()=>new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
 let audio=null,muted=false;
-let guided=false,guidedRan=false,startedOnce=false,chatDone=false,termDone=false,llmOK=false,geo=null,snap=null,answers={},contractBuf=null,forbiddenState='—',scene=null,nextSceneAt=0,voiceHook=null,serverOK=false,selfUntil=0,myScream=null,myScreamAt='',utterances=[],ring=null,ringPos=0,knockMode=false;
+let llmWait=25000,guided=false,guidedRan=false,startedOnce=false,chatDone=false,termDone=false,llmOK=false,geo=null,snap=null,answers={},contractBuf=null,forbiddenState='—',scene=null,nextSceneAt=0,voiceHook=null,serverOK=false,selfUntil=0,myScream=null,myScreamAt='',utterances=[],ring=null,ringPos=0,knockMode=false;
 const API='/api',selfNoise=ms=>{selfUntil=Math.max(selfUntil,Date.now()+ms)};
 const pick=a=>a[Math.random()*a.length|0];
 let NAME='toi';try{NAME=localStorage.getItem('stroy-name')||'toi'}catch(e){}
@@ -1740,7 +1740,7 @@ async function llm(mode,text){
   if(!llmOK)return null;
   const t0=Date.now();
   try{
-    const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),25000);
+    const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),llmWait+1500);
     const r=await fetch(API+'/llm',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({mode,text,name:named()?NAME:''}),signal:ctl.signal});
     clearTimeout(to);if(!r.ok)return null;const t=((await r.json()).text||'').trim();
     dbg('LLM',mode,'→',t,`(${Date.now()-t0} ms)`);return t||null;
@@ -2026,7 +2026,7 @@ async function subscribePush(){
 }
 if(/^https?:$/.test(location.protocol)){
   fetch(API+'/health',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{
-    if(!j||!j.ok)return;serverOK=true;llmOK=!!j.llm;
+    if(!j||!j.ok)return;serverOK=true;llmOK=!!j.llm;llmWait=(+j.llmTimeout||25)*1000;
     if(llmOK)setTimeout(()=>fetch(API+'/llm/warm',{method:'POST'}).catch(()=>{}),2500);document.getElementById('assist').hidden=false;document.getElementById('contrat').hidden=false;
     if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
     if(pushId)jpost('/push/back',{id:pushId}).catch(()=>{});
