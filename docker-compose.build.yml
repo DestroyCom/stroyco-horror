@@ -1,0 +1,12 @@
+# Pour construire les images toi-même au lieu de les tirer de GHCR :
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+services:
+  web:
+    build: ./web
+  api:
+    build: ./api
+  voice:
+    build:
+      context: ./voice
+      args:
+        PIPER_VOICE: ${PIPER_VOICE:-fr/fr_FR/tom/medium/fr_FR-tom-medium}

@@ -1,0 +1,6 @@
+faster-whisper==1.2.1
+# 4.5.0 : compilé pour CUDA 12 + cuDNN 9, compatible avec l’image CUDA 12.4, y compris sur les cartes Pascal
+ctranslate2==4.5.0
+piper-tts==1.8.0
+fastapi==0.115.12
+uvicorn==0.34.3

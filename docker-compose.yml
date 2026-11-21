@@ -1,0 +1,44 @@
+services:
+  web:
+    container_name: stroyco-horror-web
+    image: ghcr.io/destroycom/stroyco-horror-web:${TAG:-latest}
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  api:
+    container_name: stroyco-horror-api
+    image: ghcr.io/destroycom/stroyco-horror-api:${TAG:-latest}
+    environment:
+      VOICE_URL: http://stroyco-horror-voice:8000
+      VAPID_CONTACT: ${VAPID_CONTACT:-mailto:admin@example.com}
+    volumes:
+      - api-data:/data
+    depends_on:
+      - voice
+    restart: unless-stopped
+
+  voice:
+    container_name: stroyco-horror-voice
+    image: ghcr.io/destroycom/stroyco-horror-voice:${TAG:-latest}
+    environment:
+      WHISPER_MODEL: ${WHISPER_MODEL:-small}
+      WHISPER_DEVICE: ${WHISPER_DEVICE:-cuda}
+      WHISPER_COMPUTE: ${WHISPER_COMPUTE:-int8}
+      PIPER_LENGTH_SCALE: ${PIPER_LENGTH_SCALE:-1.2}
+    volumes:
+      - whisper-models:/models/whisper
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  api-data:
+  whisper-models:
