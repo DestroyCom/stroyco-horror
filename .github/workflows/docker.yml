@@ -1,23 +1,63 @@
 name: Build des images Docker
 
+# Ne build que ce qui a changé :
+# - push sur main : seulement les images dont le dossier (web/, api/, voice/) a été modifié
+# - tag v* ou lancement manuel : les 3 images
+# - modif de ce workflow : les 3 images
 on:
   push:
     branches: [main]
     tags: ['v*']
-  pull_request:
+    paths:
+      - 'web/**'
+      - 'api/**'
+      - 'voice/**'
+      - '.github/workflows/docker.yml'
   workflow_dispatch:
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
   packages: write
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      images: ${{ steps.set.outputs.images }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            web: ['web/**']
+            api: ['api/**']
+            voice: ['voice/**']
+            ci: ['.github/workflows/docker.yml']
+
+      - id: set
+        env:
+          CHANGES: ${{ steps.filter.outputs.changes }}
+        run: |
+          if [ "${{ github.event_name }}" != "push" ] || [[ "${{ github.ref }}" == refs/tags/* ]] || echo "$CHANGES" | jq -e 'index("ci")' >/dev/null; then
+            echo 'images=["web","api","voice"]' >> "$GITHUB_OUTPUT"
+          else
+            echo "images=$(echo "$CHANGES" | jq -c '[.[] | select(. != "ci")]')" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    needs: changes
+    if: needs.changes.outputs.images != '[]'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        image: [web, api, voice]
+        image: ${{ fromJSON(needs.changes.outputs.images) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -28,9 +68,7 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
-      - name: Connexion à GHCR
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+      - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -44,12 +82,11 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,format=short
             type=semver,pattern={{version}}
-            type=ref,event=pr
 
       - uses: docker/build-push-action@v6
         with:
           context: ./${{ matrix.image }}
-          push: ${{ github.event_name != 'pull_request' }}
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.image }}
