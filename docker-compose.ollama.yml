@@ -1,0 +1,21 @@
+# Ajoute un Ollama dédié si tu n'en as pas déjà un :
+#   docker compose -f docker-compose.yml -f docker-compose.ollama.yml up -d
+#   docker exec stroyco-horror-ollama ollama pull qwen2.5:1.5b
+# et mets OLLAMA_URL=http://stroyco-horror-ollama:11434 dans .env
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: stroyco-horror-ollama
+    volumes:
+      - ollama:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  ollama:

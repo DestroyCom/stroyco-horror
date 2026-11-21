@@ -272,6 +272,8 @@ body.mirror main{transform:scaleX(-1)}
 .board span{display:inline-grid;place-items:center;min-width:1.2em;font-size:clamp(15px,3vw,32px);transition:color .2s,text-shadow .2s}
 .board span.w{font-size:clamp(16px,2.6vw,28px);padding:0 .4em}
 .board span.hit{color:#ff3b2f;text-shadow:0 0 14px #f00}
+.pl.think{animation:plw .5s ease-in-out infinite alternate}
+@keyframes plw{to{margin-left:10px;margin-top:-6px}}
 .pl{position:absolute;left:0;top:0;width:clamp(46px,7vw,72px);aspect-ratio:1;border-radius:50% 50% 46% 46%;border:3px solid #ecdcb8;background:radial-gradient(circle,transparent 38%,rgba(236,220,184,.18) 40%);box-shadow:0 8px 20px rgba(0,0,0,.6);transition:transform .7s cubic-bezier(.45,.05,.3,1);pointer-events:none;z-index:2}
 .ojctl{margin-top:18px;display:grid;gap:10px;max-width:900px}
 .ojctl form{display:flex;gap:10px;flex-wrap:wrap}
@@ -581,7 +583,7 @@ const clamp=(v,a=0,b=1)=>Math.min(b,Math.max(a,v));
 const rnd=(a,b)=>a+Math.random()*(b-a);
 const now=()=>new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
 let audio=null,muted=false;
-let geo=null,snap=null,answers={},contractBuf=null,forbiddenState='—',scene=null,nextSceneAt=0,voiceHook=null,serverOK=false,selfUntil=0,myScream=null,myScreamAt='',utterances=[],ring=null,ringPos=0,knockMode=false;
+let llmOK=false,geo=null,snap=null,answers={},contractBuf=null,forbiddenState='—',scene=null,nextSceneAt=0,voiceHook=null,serverOK=false,selfUntil=0,myScream=null,myScreamAt='',utterances=[],ring=null,ringPos=0,knockMode=false;
 const API='/api',selfNoise=ms=>{selfUntil=Math.max(selfUntil,Date.now()+ms)};
 const pick=a=>a[Math.random()*a.length|0];
 let NAME='toi';try{NAME=localStorage.getItem('stroy-name')||'toi'}catch(e){}
@@ -1642,7 +1644,7 @@ const QUESTIONS=[
 let qi=0;const once={};
 async function runQuestion(){
   const Q=QUESTIONS[qi++];scene='q';const tok=++sceneTok;
-  if(Q.rule){forbidden=true;forbiddenState='respecté (pour l’instant)';askSay(Q.q(),7000);post('bot',Q.q(),true);await sleep(7000);if(!alive(tok))return;scene=null;nextSceneAt=Date.now()+18000;return}
+  if(Q.rule){once.rule=true;forbidden=true;forbiddenState='respecté (pour l’instant)';askSay(Q.q(),7000);post('bot',Q.q(),true);await sleep(7000);if(!alive(tok))return;scene=null;nextSceneAt=Date.now()+8000;return}
   askSay(Q.q(),0);
   const r=await listen(18000);if(!alive(tok))return;
   if(!r)askSay('Tu ne réponds pas. Ce n’est pas grave. Il connaît déjà la réponse.',5000);
@@ -1650,7 +1652,7 @@ async function runQuestion(){
     if(!/^trap/.test(Q.k))answers[Q.k]=r.text;
     post('x',r.text);const rep=Q.r(norm(r.text),r.text);post('bot',rep,true);askSay(rep,6000);
   }
-  await sleep(6500);if(!alive(tok))return;scene=null;nextSceneAt=Date.now()+28000;
+  await sleep(6500);if(!alive(tok))return;scene=null;nextSceneAt=Date.now()+12000;
 }
 
 /* --- répète après moi --- */
@@ -1664,7 +1666,7 @@ async function runRepeat(){
     await sleep(r.buf.duration/.62*1000+500);if(!alive(tok))return;
     const rep=`Tu as dit « ${r.text} ». Moi, j’ai entendu : « nous sommes seuls ici ».`;post('bot',rep,true);askSay(rep,7000);
   }else if(!r)askSay('Tu n’as pas voulu répéter. Il l’a fait à ta place.',5000);
-  await sleep(7000);if(!alive(tok))return;scene=null;nextSceneAt=Date.now()+28000;
+  await sleep(7000);if(!alive(tok))return;scene=null;nextSceneAt=Date.now()+12000;
 }
 
 /* --- il n'entend que les chuchotements --- */
@@ -1680,7 +1682,7 @@ async function runWhisperMode(){
     else{const t=i===0?'Bien. Continue de chuchoter.':i===1?'Plus bas. Il est juste à côté.':'Chut. Il s’est arrêté. Il écoute.';
       if(audio){audio.whisper();audio.say(t,true,'soft')}askEl.textContent=t;askEl.style.opacity=1;post('bot',t,true);await sleep(4000)}
   }
-  askEl.style.opacity=0;scene=null;nextSceneAt=Date.now()+28000;
+  askEl.style.opacity=0;scene=null;nextSceneAt=Date.now()+12000;
 }
 
 /* --- compter jusqu'à dix --- */
@@ -1701,18 +1703,28 @@ async function runCount(){
   post('bot',max>=10?'Onze.':`${who()} s’est arrêté à ${max}. Il a fini pour lui : onze.`,true);
   await sleep(2600);if(!alive(tok))return;bignum.style.display='none';
   askSay('Qui a dit onze ?',4500);
-  await sleep(5000);if(!alive(tok))return;scene=null;nextSceneAt=Date.now()+28000;
+  await sleep(5000);if(!alive(tok))return;scene=null;nextSceneAt=Date.now()+12000;
 }
 
 /* --- chef d'orchestre : une scène à la fois --- */
 setInterval(()=>{
   if(!serverOK||!micAn||scene||knockMode||document.hidden||Date.now()<nextSceneAt||p<.45)return;
-  if(qi<QUESTIONS.length&&p>=.45+qi*.025)return runQuestion();
+  if(!once.count&&p>.82)return runCount();
+  if(!once.whisper&&p>.68)return runWhisperMode();
   if(!once.repeat&&p>.55)return runRepeat();
-  if(!once.whisper&&p>.7)return runWhisperMode();
-  if(!once.count&&p>.83)return runCount();
-},1500);
+  if(!forbidden&&!once.rule&&p>.6){const i=QUESTIONS.findIndex(q=>q.rule);if(i>=0){qi=Math.max(qi,i);return runQuestion()}}
+  if(qi<QUESTIONS.length)return runQuestion();
+},1000);
 
+/* --- petit LLM (si l'API en a un), sinon réponses écrites à la main --- */
+async function llm(mode,text){
+  if(!llmOK)return null;
+  try{
+    const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),14000);
+    const r=await fetch(API+'/llm',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({mode,text,name:named()?NAME:''}),signal:ctl.signal});
+    clearTimeout(to);if(!r.ok)return null;const t=((await r.json()).text||'').trim();dbg('LLM',mode,'→',t);return t||null;
+  }catch(e){dbg('LLM indisponible',e);return null}
+}
 /* --- l'assistant vocal (encore gentil) --- */
 const asBtn=document.getElementById('asBtn'),orb=document.getElementById('orb'),asTxt=document.getElementById('asTxt'),asRep=document.getElementById('asRep');
 const JOKES=['Pourquoi les développeurs confondent Halloween et Noël ? Parce que Oct 31 égale Dec 25.','Qu’est-ce qui est jaune et qui attend ? Jonathan.','Combien de développeurs faut-il pour changer une ampoule ? Aucun, c’est un problème matériel.'];
@@ -1734,7 +1746,8 @@ asBtn.addEventListener('click',async()=>{
     const r=await listen(10000);orb.classList.remove('on');
     if(assistStop)break;
     if(!r){asTxt.textContent=turn?'À bientôt !':'Je n’ai rien entendu. Réessaie.';break}
-    asTxt.textContent=`« ${r.text} »`;const rep=assistReply(norm(r.text));asRep.textContent=rep;
+    asTxt.textContent=`« ${r.text} »`;orb.classList.add('on');
+    const rep=(await llm(p<.35?'assist':'assist_dark',r.text))||assistReply(norm(r.text));orb.classList.remove('on');if(!alive(tok))break;asRep.textContent=rep;
     audio.say(rep,true,'clean');for(let w=0;w<Math.min(90,rep.length*.75+12)&&!assistStop;w++)await sleep(100);
   }
   orb.classList.remove('on');asBtn.disabled=false;asBtn.textContent='Reparler à Stroy';if(alive(tok))scene=null;
@@ -1805,8 +1818,13 @@ function ojAnswer(t){
   return pick(['REGARDE','DERRIERE TOI','ECOUTE','PLUS PRES']);
 }
 async function ojAsk(q){
-  ojTurns++;const t=norm(q);const a=ojAnswer(t);
-  ojMsg.textContent='…';await sleep(900);
+  ojTurns++;const t=norm(q);
+  ojMsg.textContent='…';pl.classList.add('think');
+  let a=/au revoir|aurevoir|bye|adieu|lucas/.test(t)?null:await llm('ouija',q);
+  pl.classList.remove('think');
+  if(a){a=norm(a).toUpperCase().replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim().split(' ').slice(0,3).join(' ').slice(0,18);if(/^(OUI|NON|AU REVOIR)$/.test(a)===false&&a.length<2)a=null}
+  a=a||ojAnswer(t);
+  await sleep(400);
   const shown=await spell(a);
   if(audio)audio.say(shown.toLowerCase(),true,'soft');
   post('bot',`La planche a répondu : ${shown}.`,true);
@@ -1830,6 +1848,14 @@ ojBtn.addEventListener('click',async()=>{
 });
 ojForm.addEventListener('submit',async e=>{e.preventDefault();const q=ojIn.value.trim();if(!q)return;ojIn.value='';ojIn.disabled=true;await ojAsk(q);ojIn.disabled=false;ojIn.focus()});
 addEventListener('resize',()=>{const h=board.querySelector('.hit');plTo(h||board.querySelector('[data-k="AU REVOIR"]'))});
+/* quitter la section de l'assistant ou de la séance y met fin (pour laisser passer les autres scènes) */
+const leaveIO=new IntersectionObserver(es=>es.forEach(e=>{
+  if(e.isIntersecting)return;
+  const own=e.target.id==='ouija'?'ouija':'assist';
+  if(scene===own){sceneTok++;assistStop=true;cancelListen();scene=null;pl.classList.remove('think');orb.classList.remove('on');asBtn.disabled=false;ojBtn.hidden=false;ojBtn.textContent='Reprendre la séance';nextSceneAt=Date.now()+3000}
+}),{threshold:0});
+['ouija','assist'].forEach(id=>leaveIO.observe(document.getElementById(id)));
+
 
 /* ---------- serveur (seulement si le site est hébergé avec l'API) ---------- */
 let pushId=null;try{pushId=localStorage.getItem('stroy-push')}catch(e){}
@@ -1847,7 +1873,7 @@ async function subscribePush(){
 }
 if(/^https?:$/.test(location.protocol)){
   fetch(API+'/health',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{
-    if(!j||!j.ok)return;serverOK=true;document.getElementById('assist').hidden=false;document.getElementById('contrat').hidden=false;
+    if(!j||!j.ok)return;serverOK=true;llmOK=!!j.llm;document.getElementById('assist').hidden=false;document.getElementById('contrat').hidden=false;
     if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
     if(pushId)jpost('/push/back',{id:pushId}).catch(()=>{});
     subscribePush();
@@ -1941,10 +1967,10 @@ async function openMic(){
 }
 addEventListener('scroll',async()=>{
   if(micReopened||p<.45||!audio)return;
-  if(micAn){micReopened=true;nextSceneAt=Date.now()+2500;return}
+  if(micAn){micReopened=true;nextSceneAt=Date.now()+1500;return}
   if(!micGranted){try{const st=await navigator.permissions.query({name:'microphone'});if(st.state!=='granted')return}catch(e){return}}
   micReopened=true;
-  if(await openMic()){post('bot','Micro du salon rouvert. On écoute.',true);toast('StroyCord : ton micro est de nouveau actif.');nextSceneAt=Date.now()+2500}
+  if(await openMic()){post('bot','Micro du salon rouvert. On écoute.',true);toast('StroyCord : ton micro est de nouveau actif.');nextSceneAt=Date.now()+1500}
 },{passive:true});
 
 /* ---------- vérification : pas de nouvelle demande, on réutilise ---------- */

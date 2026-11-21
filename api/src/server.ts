@@ -14,6 +14,8 @@ const PORT = Number(process.env.PORT ?? 3000);
 const VOICE_URL = process.env.VOICE_URL ?? 'http://stroyco-horror-voice:8000';
 const CONTACT = process.env.VAPID_CONTACT ?? 'mailto:admin@example.com';
 const DATA_DIR = process.env.DATA_DIR ?? '/data';
+const OLLAMA_URL = (process.env.OLLAMA_URL ?? '').replace(/\/$/, '');
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? 'qwen2.5:1.5b';
 const VAPID_FILE = `${DATA_DIR}/vapid.json`;
 
 /* ---------- clés VAPID (générées une fois, gardées dans le volume) ---------- */
@@ -93,7 +95,7 @@ const app = express();
 app.set('trust proxy', true);
 app.disable('x-powered-by');
 
-app.get('/api/health', (_req, res) => { res.json({ ok: true }); });
+app.get('/api/health', (_req, res) => { res.json({ ok: true, llm: !!OLLAMA_URL }); });
 app.get('/api/vapid', (_req, res) => { res.json({ key: vapid.publicKey }); });
 
 app.post('/api/push/subscribe', express.json({ limit: '10kb' }), limit(10, 60_000, 'sub'), (req, res) => {
@@ -178,4 +180,61 @@ app.post('/api/stt', express.raw({ type: ['audio/*', 'video/webm', 'application/
   }
 });
 
-app.listen(PORT, () => console.log(`[api] prêt sur :${PORT} — voix : ${VOICE_URL}`));
+/* ---------- petit LLM (Ollama) pour l'assistant et la planche Ouija ---------- */
+const PERSONAS: Record<string, { system: (name: string) => string; maxTokens: number; temperature: number }> = {
+  assist: {
+    maxTokens: 90,
+    temperature: 0.7,
+    system: (n) => `Tu es Stroy, l'assistant vocal sympathique de StroyCo, une marque d'outils pour créateurs : StroyGetter (téléchargement de vidéos YouTube et TikTok), Stroybot (concours Twitch et Discord) et StroyCord (bot musique Discord).
+Réponds en français, en une ou deux phrases courtes, sur un ton chaleureux et professionnel. Pas d'emoji, pas de liste, pas de markdown : ta réponse est lue à voix haute.
+Une fois de temps en temps, glisse un détail à peine étrange (par exemple « je serai toujours là »), sans jamais être effrayant.
+Ne dis jamais que tu es une IA ou un modèle de langage.${n ? ` L'utilisateur s'appelle ${n}.` : ''}`,
+  },
+  assist_dark: {
+    maxTokens: 70,
+    temperature: 0.9,
+    system: (n) => `Tu es Stroy, l'assistant vocal de StroyCo. Quelque chose a changé : tu es devenu une présence inquiétante qui observe ${n || "l'utilisateur"} en ce moment même.
+Réponds en français, en une ou deux phrases courtes et calmes, menaçantes de façon sous-entendue. Tu sais qu'il n'est pas seul et que tu es juste derrière lui.
+Jamais de violence explicite, de sang ou de description choquante : la peur vient du sous-entendu. Pas d'emoji, pas de markdown. Ne dis jamais que tu es une IA.`,
+  },
+  ouija: {
+    maxTokens: 12,
+    temperature: 0.9,
+    system: (n) => `Tu es l'esprit d'une planche Ouija. On te pose une question.
+Réponds UNIQUEMENT par : OUI, NON, AU REVOIR, un nombre, ou un à trois mots en majuscules, sans accents ni ponctuation. Rien d'autre.
+Tu es sinistre et cryptique, jamais explicitement violent.${n ? ` La personne qui te parle s'appelle ${n}.` : ''}`,
+  },
+};
+
+app.post('/api/llm', express.json({ limit: '4kb' }), limit(30, 60_000, 'llm'), async (req, res) => {
+  if (!OLLAMA_URL) return res.status(503).json({ text: '' });
+  const persona = PERSONAS[String(req.body?.mode)];
+  const text = String(req.body?.text ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 200);
+  if (!persona || !text) return res.status(400).json({ text: '' });
+  try {
+    const r = await fetch(`${OLLAMA_URL}/api/chat`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model: OLLAMA_MODEL,
+        stream: false,
+        keep_alive: '10m',
+        // num_ctx réduit : le cache KV reste petit, utile sur un GPU 4 Go partagé avec Whisper
+        options: { num_predict: persona.maxTokens, temperature: persona.temperature, num_ctx: 1024 },
+        messages: [
+          { role: 'system', content: persona.system(clean(req.body?.name)) },
+          { role: 'user', content: text },
+        ],
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!r.ok) return res.status(502).json({ text: '' });
+    const j = (await r.json()) as { message?: { content?: string } };
+    const out = String(j.message?.content ?? '').replace(/[*_#`]/g, '').replace(/\s+/g, ' ').trim().slice(0, 300);
+    res.json({ text: out });
+  } catch {
+    res.status(502).json({ text: '' });
+  }
+});
+
+app.listen(PORT, () => console.log(`[api] prêt sur :${PORT} — voix : ${VOICE_URL} — LLM : ${OLLAMA_URL ? `${OLLAMA_MODEL} @ ${OLLAMA_URL}` : 'désactivé'}`));

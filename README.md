@@ -8,6 +8,7 @@ Le site marche toujours seul (fichier HTML). Hébergé avec ce stack, il débloq
 | Il comprend ce que tu dis (Whisper `small`, int8) et te répond / avertit / screamer | `voice` (GPU) |
 | Notifications après fermeture de la page (« REVIENS ICI »…) | `api` + `sw.js` |
 | « Frappe deux fois si tu es seul », cri capturé et rejoué | page (micro, rien côté serveur) |
+| Assistant Stroy et planche Ouija pilotés par un petit LLM (optionnel) | Ollama, via `api` |
 
 ```
 web   (nginx)      :8080 → sert la page + sw.js, proxy /api → api
@@ -54,6 +55,16 @@ Aucune config spéciale : pas de WebSocket.
 
 - `PIPER_VOICE` (build local uniquement, l’image GHCR embarque `fr_FR-tom-medium`) : autre voix française, chemin dans [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices/tree/main/fr/fr_FR) sans extension (ex. `fr/fr_FR/gilles/low/fr_FR-gilles-low`). Rebuild : `docker compose -f docker-compose.yml -f docker-compose.build.yml build voice`.
 - `PIPER_LENGTH_SCALE` : 1.0 normal, 1.2 lent (défaut), 1.4 très lent.
+
+## LLM (optionnel)
+
+L'assistant Stroy et la planche Ouija peuvent répondre avec un petit modèle via [Ollama](https://ollama.com).
+Sans `OLLAMA_URL`, ils utilisent des réponses écrites à la main (et c'est aussi le repli si Ollama ne répond pas en 14 s).
+
+- Tu as déjà un Ollama : mets son adresse dans `OLLAMA_URL` (le conteneur `api` doit pouvoir le joindre : même réseau Docker ou IP de l'hôte).
+- Sinon : `docker compose -f docker-compose.yml -f docker-compose.ollama.yml up -d`, puis `docker exec stroyco-horror-ollama ollama pull qwen2.5:1.5b`.
+- Le modèle doit comprendre le français. Défaut : `qwen2.5:1.5b` (~1,2 Go, tient avec Whisper sur un GPU 4 Go). `qwen2.5:3b` (~2,3 Go) parle mieux français si le GPU a la place.
+- Contexte limité à 1024 tokens (les échanges sont courts) pour garder le cache mémoire petit.
 
 ## Notifications push
 

@@ -14,6 +14,9 @@ services:
     environment:
       VOICE_URL: http://stroyco-horror-voice:8000
       VAPID_CONTACT: ${VAPID_CONTACT:-mailto:admin@example.com}
+      # Optionnel : un Ollama pour l'assistant et la planche Ouija (sinon réponses écrites à la main)
+      OLLAMA_URL: ${OLLAMA_URL:-}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b}
     volumes:
       - api-data:/data
     depends_on:
