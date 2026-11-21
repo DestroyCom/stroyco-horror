@@ -255,6 +255,31 @@ body.mirror main{transform:scaleX(-1)}
 .f-radar p,.f-voice p{font-size:14px;margin-top:10px}
 .f-voice{align-self:center}.f-voice .btn{background:#6b0000}
 @media(max-width:700px){.file2{grid-template-columns:minmax(0,1fr);transform:none}#dList{grid-template-columns:minmax(0,1fr);gap:0}#dList dd{margin-bottom:10px}.f-photo{max-width:300px;margin:0 auto}.f-radar canvas{margin:auto}.f-radar p{text-align:center}}
+.asst{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:40px;align-items:center}
+.orb-wrap{display:grid;justify-items:center;gap:14px;text-align:center}
+.orb{width:min(220px,50vw);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffd2b8,var(--acc) 45%,#7a1b00 100%);box-shadow:0 20px 60px -15px var(--acc);transition:transform .3s}
+.orb.on{animation:orb 1s ease-in-out infinite alternate}
+@keyframes orb{to{transform:scale(1.08);box-shadow:0 20px 90px -5px var(--acc)}}
+#asTxt{font:600 18px Sora,sans-serif}
+.contract{margin-top:30px;max-width:760px;background:#efe8da;color:#1c150f;border-radius:6px;padding:clamp(20px,3vw,36px);font-family:"Special Elite",monospace;box-shadow:0 30px 60px -25px #000;display:grid;gap:16px}
+.contract ol{margin:0;padding-left:22px;display:grid;gap:12px;font-size:clamp(16px,2vw,20px)}
+.contract li{opacity:.25;transition:opacity .4s}.contract li.now{opacity:1;text-decoration:underline;text-decoration-color:#a00}.contract li.ok{opacity:.7}
+.contract li.ok::after{content:"  ✓";color:#0a7a2f}
+#ctMsg{color:#8a0000;min-height:22px}
+.board{position:relative;margin-top:30px;max-width:900px;border-radius:28px;padding:clamp(18px,4vw,44px) clamp(12px,3vw,36px) clamp(22px,4vw,40px);background:radial-gradient(ellipse at 50% 40%,#4a2e18,#1d1009 80%);color:#ecdcb8;font-family:"Special Elite",monospace;box-shadow:inset 0 0 60px #000,0 30px 60px -25px #000;user-select:none}
+.board .orow{display:flex;justify-content:space-between;gap:2px;margin:10px 0}
+.board .orow.c{justify-content:center}
+.board span{display:inline-grid;place-items:center;min-width:1.2em;font-size:clamp(15px,3vw,32px);transition:color .2s,text-shadow .2s}
+.board span.w{font-size:clamp(16px,2.6vw,28px);padding:0 .4em}
+.board span.hit{color:#ff3b2f;text-shadow:0 0 14px #f00}
+.pl{position:absolute;left:0;top:0;width:clamp(46px,7vw,72px);aspect-ratio:1;border-radius:50% 50% 46% 46%;border:3px solid #ecdcb8;background:radial-gradient(circle,transparent 38%,rgba(236,220,184,.18) 40%);box-shadow:0 8px 20px rgba(0,0,0,.6);transition:transform .7s cubic-bezier(.45,.05,.3,1);pointer-events:none;z-index:2}
+.ojctl{margin-top:18px;display:grid;gap:10px;max-width:900px}
+.ojctl form{display:flex;gap:10px;flex-wrap:wrap}
+.ojctl input{flex:1 1 220px;min-height:48px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font:16px Inter,sans-serif;padding:0 18px}
+#ojMsg{font-family:"Special Elite",monospace;font-size:18px;color:#c22}
+#bignum{position:fixed;inset:0;z-index:58;display:none;place-items:center;font:800 clamp(140px,40vw,420px)/1 Sora,sans-serif;color:#e8dcd2;text-shadow:0 0 50px #000;pointer-events:none}
+#bignum.red{color:#b00000;text-shadow:0 0 60px #500}
+@media(max-width:900px){.asst{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:900px){.grid3,.quotes,.prices,.steps{grid-template-columns:minmax(0,1fr)}.hero .wrap{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:600px){
   .setup li{grid-template-columns:minmax(0,1fr);padding:16px}.sa{justify-content:flex-start;padding-left:46px}.sa form{width:100%}.sa input{flex:1 1 140px;width:auto}.camwrap{margin-left:auto;margin-right:auto}
@@ -298,6 +323,7 @@ body.mirror main{transform:scaleX(-1)}
 <svg id="fakecur" viewBox="0 0 22 22"><path d="M3 2l14 9-6 1.5L8 19z" fill="#fff" stroke="#000" stroke-width="1.2"/></svg>
 <div id="idle"></div>
 <div id="ask" role="status"></div>
+<div id="bignum" aria-hidden="true"></div>
 <div id="ctx" role="menu"></div>
 <div id="bsod"></div>
 <div id="toast" role="status"></div>
@@ -375,6 +401,19 @@ body.mirror main{transform:scaleX(-1)}
       <li data-s="geo"><div class="sh"><span class="num">5</span><div><h3>Autour de toi</h3><p>Découvre les concours et les créateurs près de chez toi.</p></div></div>
         <div class="sa"><button class="btn" type="button" data-go>Voir ce qui est près de moi</button><button class="skip" type="button" data-skip>Plus tard</button></div><p class="st"></p></li>
     </ol>
+  </div>
+</section>
+
+<section class="band" id="assist" hidden>
+  <div class="wrap asst">
+    <div>
+      <p class="pill">Nouveau</p>
+      <h2>Parle à Stroy, ton assistant vocal.</h2>
+      <p class="lead">Lance un concours, mets de la musique ou demande une blague. Clique, puis dis simplement « Salut Stroy ».</p>
+      <div class="cta" style="margin-top:22px"><button class="btn" id="asBtn" type="button">Essayer l’assistant</button></div>
+      <p class="note">Ta voix est transcrite puis oubliée.</p>
+    </div>
+    <div class="orb-wrap"><div class="orb" id="orb"></div><p id="asTxt">« Salut Stroy »</p><p id="asRep" class="note"></p></div>
   </div>
 </section>
 
@@ -460,6 +499,15 @@ body.mirror main{transform:scaleX(-1)}
   </div>
 </section>
 
+<section class="band" id="contrat" hidden>
+  <div class="eyes" data-eyes="10"></div>
+  <div class="wrap">
+    <h2 data-g>Signature vocale.</h2>
+    <p class="lead" data-g>Pour finaliser ton inscription, lis chaque ligne à voix haute. Stroy vérifie que c’est bien toi.</p>
+    <div class="contract"><ol id="ctLines"></ol><p id="ctMsg"></p><button class="btn" id="ctBtn" type="button">Commencer la signature vocale</button></div>
+  </div>
+</section>
+
 <section class="band" id="serveur">
   <div class="eyes" data-eyes="16"></div>
   <div class="wrap">
@@ -478,6 +526,20 @@ body.mirror main{transform:scaleX(-1)}
       <dl id="dList"></dl>
       <div class="f-radar"><canvas id="radar" width="300" height="300" aria-label="Radar"></canvas><p id="radarTxt">Recherche…</p></div>
       <div class="f-voice"><p style="margin:0 0 12px">Pièce n° 4 : échantillon vocal.</p><button class="btn" id="dVoice" type="button">Écouter ta voix</button><p id="dVoiceTxt"></p></div>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="ouija">
+  <div class="eyes" data-eyes="8"></div>
+  <div class="wrap">
+    <h2 data-g>La séance.</h2>
+    <p class="lead" data-g>Pose tes questions. Une à la fois. Et ne pars pas sans dire au revoir.</p>
+    <div class="board" id="board"><div class="pl" id="pl"></div></div>
+    <div class="ojctl">
+      <button class="btn" id="ojBtn" type="button">Commencer la séance</button>
+      <form id="ojForm" hidden autocomplete="off"><input id="ojIn" maxlength="80" placeholder="Pose ta question" aria-label="Ta question"><button class="btn" type="submit">Demander</button></form>
+      <p id="ojMsg" class="note"></p>
     </div>
   </div>
 </section>
@@ -519,7 +581,7 @@ const clamp=(v,a=0,b=1)=>Math.min(b,Math.max(a,v));
 const rnd=(a,b)=>a+Math.random()*(b-a);
 const now=()=>new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
 let audio=null,muted=false;
-let geo=null,snap=null,serverOK=false,selfUntil=0,myScream=null,myScreamAt='',utterances=[],ring=null,ringPos=0,knockMode=false;
+let geo=null,snap=null,answers={},contractBuf=null,forbiddenState='—',scene=null,nextSceneAt=0,voiceHook=null,serverOK=false,selfUntil=0,myScream=null,myScreamAt='',utterances=[],ring=null,ringPos=0,knockMode=false;
 const API='/api',selfNoise=ms=>{selfUntil=Math.max(selfUntil,Date.now()+ms)};
 const pick=a=>a[Math.random()*a.length|0];
 let NAME='toi';try{NAME=localStorage.getItem('stroy-name')||'toi'}catch(e){}
@@ -863,6 +925,8 @@ function randomEvent(){
   if(p>.7)pool.push(['silence',1]);
   if(p>.72&&!reduce)pool.push(['hand',2]);
   if(myScream)pool.push(['myscream',4]);
+  if(contractBuf)pool.push(['contract',3]);
+  if(Object.keys(answers).length&&p>.6)pool.push(['answer',3]);
   if(utterances.length)pool.push(['repeat',3]);
   const c=pool.filter(x=>x[0]!==lastEvt);let r=Math.random()*c.reduce((a,x)=>a+x[1],0),k=c[0][0];
   for(const[n,w]of c){if((r-=w)<0){k=n;break}}
@@ -878,13 +942,15 @@ function randomEvent(){
     case'mirror':B.classList.add('mirror');setTimeout(()=>B.classList.remove('mirror'),1300);audio.whisper();break;
     case'silence':silenceScare();break;
     case'hand':hand();break;
+    case'contract':audio.voice(false,.72,contractBuf);setTimeout(()=>toast('Lecture de ta signature vocale.'),400);break;
+    case'answer':{const[k,v]=pick(Object.entries(answers));const t=`Tu as dit : ${v}. ${pick(['Je m’en souviens.','Il s’en souvient aussi.','Tu le penses toujours ?'])}`;audio.say(t);post('bot',t,true);break}
     case'myscream':audio.voice(Math.random()<.5,rnd(.5,.75),myScream);setTimeout(()=>toast(`Tu te souviens de ce cri ? Il est à toi. ${myScreamAt}.`),600);break;
     case'repeat':{const[at,tx]=pick(utterances);audio.say(`À ${at}, tu as dit : ${tx}`);post('bot',`À ${at}, ${who()} a dit : « ${tx} ».`,true);break}
   }
 }
 (function haunt(){
   const delay=p<.3?5000:Math.max(6000,38000-p*34000)*rnd(.6,1.3);
-  setTimeout(()=>{if(!document.hidden&&p>=.3)randomEvent();haunt()},delay);
+  setTimeout(()=>{if(!document.hidden&&p>=.3&&!scene)randomEvent();haunt()},delay);
 })();
 (function heart(){
   if(audio&&p>.6&&!document.hidden){audio.beat();if(p>.8)buzz([40,180,30])}
@@ -1021,7 +1087,7 @@ function initAudio(){
         const g=ctx.createGain();g.gain.value=2.2;const f=ctx.createBiquadFilter();f.type='lowpass';f.frequency.value=2400;
         src.connect(f).connect(g).connect(pn).connect(master);src.start();selfNoise(buf.duration/src.playbackRate.value*1000+800);
       },
-      say(txt,prio){
+      say(txt,prio,style){
         if(muted)return;
         const t=txt||((named()&&Math.random()<.5?NAME+'. ':'')+PHR[Math.random()*PHR.length|0]);
         if(Date.now()<speakEnd){if(prio)sayNext=t;return}
@@ -1032,20 +1098,21 @@ function initAudio(){
           try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='fr-FR';u.pitch=.1;u.rate=.6;u.volume=.8;
             u.onend=u.onerror=()=>done(300);speechSynthesis.speak(u);selfNoise(t.length*120+1000)}catch(e){speakEnd=0}
         };
-        if(serverOK)audio.tts(t).then(ms=>done(ms+300)).catch(local);else local();
+        if(serverOK)audio.tts(t,style).then(ms=>done(ms+300)).catch(local);else local();
       },
-      async tts(text){
+      async tts(text,style){
         let buf=ttsCache.get(text);
         if(!buf){
           const r=await fetch(API+'/tts',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:text.slice(0,220)})});
           if(!r.ok)throw new Error('tts');buf=await ctx.decodeAudioData(await r.arrayBuffer());
           if(ttsCache.size>80)ttsCache.delete(ttsCache.keys().next().value);ttsCache.set(text,buf);
         }
-        const pn=pan(rnd(-.35,.35)),f=ctx.createBiquadFilter();f.type='lowpass';f.frequency.value=3400;
-        const dry=ctx.createGain();dry.gain.value=1.6;const wet=ctx.createGain();wet.gain.value=.3;
+        const clean=style==='clean',soft=style==='soft',rate=clean?1:soft?.93:.86;
+        const pn=pan(clean?0:soft?(Math.random()<.5?-.9:.9):rnd(-.35,.35)),f=ctx.createBiquadFilter();f.type='lowpass';f.frequency.value=clean?9000:soft?2600:3400;
+        const dry=ctx.createGain();dry.gain.value=clean?1.4:soft?.75:1.6;const wet=ctx.createGain();wet.gain.value=clean?0:soft?.7:.3;
         f.connect(dry).connect(pn);f.connect(verb).connect(wet).connect(pn);
-        const a=ctx.createBufferSource();a.buffer=buf;a.playbackRate.value=.86;a.connect(f);
-        a.start();const ms=buf.duration/.86*1000;selfNoise(ms+600);return ms;
+        const a=ctx.createBufferSource();a.buffer=buf;a.playbackRate.value=rate;a.connect(f);
+        a.start();const ms=buf.duration/rate*1000;selfNoise(ms+600);return ms;
       },
       mute(m){master.gain.setTargetAtTime(m?0:1,ctx.currentTime,.05);if(m&&window.speechSynthesis){speechSynthesis.cancel();speakEnd=0}}
     };
@@ -1118,7 +1185,7 @@ function live(){
     const o=observations();
     if(o.length){const[k,t]=pick(o);said.set(k,Date.now());post('bot',t,true);
       if(!chatVisible&&Math.random()<.6)toast('Stroybot dans #concours : '+t);
-      if(audio&&Math.random()<.12)audio.say(t)}
+      if(audio&&!scene&&Math.random()<.12)audio.say(t)}
   }
   setTimeout(live,rnd(7000,12000));
 }
@@ -1131,7 +1198,7 @@ function wake(){
   if(idleOn){idleOn=false;idleEl.style.opacity=0;creep.classList.add('off');creep.classList.remove('on');setTimeout(()=>creep.classList.remove('off'),200);if(audio&&p>.5)audio.whisper('trop tard')}
   clearTimeout(idleT);
   idleT=setTimeout(()=>{
-    if(p<.3||document.hidden)return wake();
+    if(p<.3||document.hidden||scene||voiceHook||recOn)return wake();
     idleOn=true;S.idles++;
     idleEl.textContent=pick(['Tu fais semblant de ne pas être là ?','Je sais que tu es là.','Ne bouge surtout pas.','Il s’approche quand tu ne bouges pas.']);
     idleEl.style.opacity=1;if(!reduce)creep.classList.add('on');if(audio)audio.whisper();
@@ -1338,7 +1405,7 @@ new IntersectionObserver((es)=>{
   const ps=reflet.querySelectorAll('p');
   if(audio)audio.mute(true);
   ps.forEach((el,i)=>setTimeout(()=>el.classList.add('show'),[200,2600,7500,9500][i]));
-  setTimeout(()=>{if(audio){audio.mute(muted);if(myScream)audio.voice(false,.8,myScream);else audio.whisper(named()?NAME+', il est là.':'il est là.')}},10500);
+  setTimeout(()=>{if(audio){audio.mute(muted);if(contractBuf)audio.voice(false,.75,contractBuf);else if(myScream)audio.voice(false,.8,myScream);else audio.whisper(named()?NAME+', il est là.':'il est là.')}},10500);
 },{threshold:.55}).observe(reflet);
 
 /* ---------- notifications système (vraies ou imitées) ---------- */
@@ -1363,8 +1430,8 @@ function sysNotif(t,b){
 let awayTimers=[],awayIdx=0;
 const AWAY=[
   ()=>['Stroybot · Concours de Noël',`${named()?NAME+', tu':'Tu'} as gagné. Reviens chercher ton lot.`],
-  ()=>['Stroybot','Pourquoi tu as fermé l’onglet ? On te voit toujours.'],
-  ()=>['Numéro masqué','Je suis devant ta porte.'],
+  ()=>answers.alone?['StroyCo',yesW(norm(answers.alone))?'Tu as dit que tu étais seul. Tu as menti.':'Tu as dit que tu n’étais pas seul. Il le sait.']:['Stroybot','Pourquoi tu as fermé l’onglet ? On te voit toujours.'],
+  ()=>answers.door?['Numéro masqué',yesW(norm(answers.door))?'Tu as dit que ta porte était fermée. Elle ne l’est plus.':'Tu as laissé ta porte ouverte. Merci.']:['Numéro masqué','Je suis devant ta porte.'],
   ()=>['StroyCord','Le salon vocal s’est rouvert tout seul. Quelqu’un respire dedans.']];
 document.addEventListener('visibilitychange',()=>{
   awayTimers.forEach(clearTimeout);awayTimers=[];
@@ -1384,6 +1451,10 @@ function warnShow(msg,lvl){
 }
 const norm=t=>String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
 function voiceReply(t){
+  if(/\bstroy\b/.test(t))return'Je ne m’appelle pas comme ça.';
+  if(/blague/.test(t))return'Tu veux une blague ? Regarde derrière toi.';
+  if(/concours|tirage/.test(t))return'Le concours est terminé. Tu as gagné. Viens chercher ton lot.';
+  if(/musique|chanson/.test(t))return'Écoute bien. Ce n’est plus de la musique.';
   if(/pas peur|meme pas peur|ca fait pas peur|j.?ai pas peur|n.?ai pas peur|nul|ridicule/.test(t))return'scream';
   if(/qui est la|qui est-ce|y a quelqu|il y a quelqu/.test(t))return'Retourne-toi et tu verras.';
   if(/au secours|aide|help|a l.?aide/.test(t))return'Personne ne viendra. Ils dorment tous.';
@@ -1408,7 +1479,7 @@ function heardWarn(text){
   post('bot',sp||[`${who()} parle. On l’entend.`,`${who()} parle encore. Deuxième avertissement.`,`${who()} : dernier avertissement. La prochaine fois, on vient.`][heardN-1],true);
   buzz(120*heardN);
 }
-let recOn=false,mrec=null,recChunks=[],lastLoud=0,recT0=0,sttBusy=false,pendingQ=false;
+let recOn=false,mrec=null,recChunks=[],lastLoud=0,recT0=0,sttBusy=false;
 const dbg=(...a)=>console.debug('[stroyco]',...a);
 function encodeWav(f32,sr){
   const b=new ArrayBuffer(44+f32.length*2),v=new DataView(b),w=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i))};
@@ -1424,11 +1495,13 @@ function startUtter(){
 }
 async function endUtter(){
   recOn=false;
-  let blob;
+  let blob,uLvl=null,uBuf=null;
   if(ring){
-    const sr=audio.ctx.sampleRate,secs=Math.min(4.8,(Date.now()-recT0)/1000+.5),n=Math.floor(secs*sr),L=ring.length,out=new Float32Array(n);
+    const sr=audio.ctx.sampleRate,secs=Math.min(7.8,(Date.now()-recT0)/1000+.5),n=Math.floor(secs*sr),L=ring.length,out=new Float32Array(n);
     for(let i=0;i<n;i++)out[i]=ring[(ringPos-n+i+L)%L];
     blob=encodeWav(out,sr);
+    let sq=0;for(let i=0;i<n;i++)sq+=out[i]*out[i];uLvl=Math.sqrt(sq/n)*2.2;
+    try{uBuf=audio.ctx.createBuffer(1,n,sr);uBuf.getChannelData(0).set(out)}catch(e){uBuf=null}
   }else{
     if(!mrec)return;await new Promise(r=>{mrec.onstop=r;try{mrec.stop()}catch(e){r()}});
     blob=new Blob(recChunks,{type:(mrec.mimeType||'audio/webm')});
@@ -1437,22 +1510,20 @@ async function endUtter(){
   sttBusy=true;dbg('envoi à Whisper',Math.round(blob.size/1024)+' Ko');
   let text='';
   try{const r=await fetch(API+'/stt',{method:'POST',headers:{'content-type':blob.type.split(';')[0]},body:blob});if(r.ok)text=((await r.json()).text||'').trim();else dbg('erreur STT',r.status)}catch(e){dbg('erreur STT',e)}
+  text=cleanHallu(text);
   sttBusy=false;dbg('Whisper a compris :',text||'(rien)');
-  if(text.length>1)utterances.push([now(),text]);
-  if(pendingQ){
-    pendingQ=false;heardAt=Date.now()+3000;
-    if(text.length>1){post('x',text);const r=named()?`Tu mens, ${NAME}. Il y a quelqu’un juste derrière toi.`:'Tu mens. Il y a quelqu’un juste derrière toi.';post('bot',r,true);askSay(r,5000)}
-    else{const r='Plus fort. Il n’a pas entendu. Lui, si.';askSay(r,4000);pendingQ=true}
-    return;
-  }
-  heardWarn(text.length>1?text:null);
+  if(text)utterances.push([now(),text]);
+  if(text&&forbidden&&/\blucas\b/.test(norm(text))){tripForbidden(text);if(voiceHook)voiceHook({text,lvl:uLvl,buf:uBuf,tripped:true});return}
+  if(voiceHook){voiceHook({text,lvl:uLvl,buf:uBuf});return}
+  heardWarn(text||null);
 }
 setInterval(()=>{
-  if(!micAn||p<.45||document.hidden||knockMode||sttBusy)return;
+  if(!micAn||document.hidden||knockMode||sttBusy)return;
+  if(p<.45&&!voiceHook)return;
   const quiet=Date.now()<selfUntil,loud=!quiet&&micLevel()>Math.max(.03,micPeak*.35);
   if(serverOK&&micStream){
-    if(loud){lastLoud=Date.now();if(!recOn&&Date.now()>=heardAt)startUtter()}
-    if(recOn&&(Date.now()-lastLoud>1000||Date.now()-recT0>4300))endUtter();
+    if(loud){wake();lastLoud=Date.now();if(!recOn&&(voiceHook||Date.now()>=heardAt))startUtter()}
+    if(recOn&&(Date.now()-lastLoud>1000||Date.now()-recT0>7000))endUtter();
     return;
   }
   if(loud)heardWarn(null);
@@ -1461,7 +1532,7 @@ setInterval(()=>{
 /* ---------- ton cri, enregistré ---------- */
 function startRing(src){
   try{
-    const ctx=audio.ctx,sp=ctx.createScriptProcessor(4096,1,1);ring=new Float32Array(ctx.sampleRate*5);ringPos=0;
+    const ctx=audio.ctx,sp=ctx.createScriptProcessor(4096,1,1);ring=new Float32Array(ctx.sampleRate*8);ringPos=0;
     sp.onaudioprocess=e=>{const d=e.inputBuffer.getChannelData(0);for(let i=0;i<d.length;i++){ring[ringPos]=d[i];ringPos=(ringPos+1)%ring.length}};
     const z=ctx.createGain();z.gain.value=0;src.connect(sp);sp.connect(z).connect(ctx.destination);
   }catch(e){}
@@ -1481,11 +1552,12 @@ function grabScream(){
 /* ---------- « frappe deux fois si tu es seul » ---------- */
 const askEl=document.getElementById('ask');let knockDone=false;
 const askSay=(t,ms)=>{askEl.textContent=t;askEl.style.opacity=1;if(audio)audio.say(t,true);if(ms)setTimeout(()=>askEl.style.opacity=0,ms)};
-addEventListener('scroll',()=>{if(!knockDone&&micAn&&p>.56&&!document.hidden){knockDone=true;knockGame()}},{passive:true});
+addEventListener('scroll',()=>{if(!knockDone&&micAn&&!scene&&p>.56&&!document.hidden){knockDone=true;knockGame()}},{passive:true});
 function knockGame(){
-  knockMode=true;askSay('Frappe deux fois sur ton bureau si tu es seul.');
+  knockMode=true;scene='knock';const ktok=++sceneTok;askSay('Frappe deux fois sur ton bureau si tu es seul.');
   const knocks=[];let amb=0,ambN=0,prev=0;const t0=Date.now()+2600;
   (function loop(){
+    if(!alive(ktok)){knockMode=false;knockDone=false;return}
     const t=Date.now(),lv=micLevel();
     if(t<t0||t<selfUntil){amb+=lv;ambN++;prev=lv;return requestAnimationFrame(loop)}
     const thr=Math.max(.07,(amb/Math.max(1,ambN))*6);
@@ -1496,7 +1568,7 @@ function knockGame(){
     requestAnimationFrame(loop);
   })();
   function result(n){
-    const end=()=>setTimeout(()=>{askEl.style.opacity=0;knockMode=false},5000);
+    const end=()=>setTimeout(()=>{askEl.style.opacity=0;knockMode=false;scene=null;nextSceneAt=Date.now()+20000},5000);
     if(n===2){setTimeout(()=>{if(audio)audio.knock(1);setTimeout(()=>{askSay('Alors pourquoi j’en ai entendu trois ?');buzz([200,100,200]);post('bot',`${who()} a frappé deux fois. On en a entendu trois.`,true);end()},900)},1000)}
     else if(n===1){askSay('Une seule fois ? Il en manque une. Il va la frapper pour toi.');setTimeout(()=>audio&&audio.knock(1),2600);end()}
     else if(n>=3){askSay(`${n} fois. Donc vous êtes plusieurs.`);setTimeout(()=>audio&&audio.knock(2),2400);end()}
@@ -1515,6 +1587,238 @@ function screamer(){
 addEventListener('pagehide',()=>{if(micStream)micStream.getTracks().forEach(t=>t.stop())});
 setInterval(()=>{if(micStream&&micAn&&recStart)recT.textContent=(recOn?'IL T’ÉCOUTE · ':sttBusy?'IL RÉFLÉCHIT · ':'MICRO ACTIF · ')+recT.textContent.replace(/^(MICRO ACTIF|IL T’ÉCOUTE|IL RÉFLÉCHIT) · /,'')},250);
 
+/* ================= interactions vocales (Whisper) ================= */
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const HALLU=/sous-?titr|amara|merci d.?avoir regard|abonnez|abonne-toi|merci de votre attention|merci a tous|a bientot pour une nouvelle|radio-canada|^[\s.…!?,-]*$/;
+function cleanHallu(t){t=(t||'').trim();return t.length<2||HALLU.test(norm(t))?'':t}
+const yesW=t=>/\b(oui|ouais|ouai|yes|bien sur|exact|affirmatif|evidemment|carrement|absolument)\b/.test(t);
+const noW=t=>/\b(non|nan|no|pas du tout|jamais|nope)\b/.test(t);
+let cancelListen=()=>{};
+function listen(ms,opt={}){
+  return new Promise(res=>{
+    const to=setTimeout(()=>{if(voiceHook===h)voiceHook=null;res(null)},ms);
+    const h=r=>{if(!r.text&&!opt.allowEmpty)return;clearTimeout(to);voiceHook=null;res(r)};
+    voiceHook=h;cancelListen=()=>{clearTimeout(to);if(voiceHook===h)voiceHook=null;res(null)};
+  });
+}
+/* un bouton cliqué pendant l'assistant l'interrompt au lieu d'être ignoré */
+let assistStop=false,sceneTok=0;
+const alive=t=>t===sceneTok;
+async function takeScene(){
+  if(scene){sceneTok++;assistStop=true;cancelListen();askEl.style.opacity=0;bignum.style.display='none'}
+  scene='user';nextSceneAt=Date.now()+15000;await sleep(150);
+  return true;
+}
+let forbidden=false;
+function tripForbidden(){
+  forbidden=false;forbiddenState='prononcé à '+now();
+  post('bot',`${who()} l’a appelé.`,true);askSay('Tu l’as appelé.',4000);setTimeout(screamer,900);
+}
+
+/* --- l'interrogatoire --- */
+const cap=t=>t.charAt(0).toUpperCase()+t.slice(1);
+const QUESTIONS=[
+  {k:'who',q:()=>'Réponds à voix haute : qui est avec toi en ce moment ?',r:()=>named()?`Tu mens, ${NAME}. Il y a quelqu’un juste derrière toi.`:'Tu mens. Il y a quelqu’un juste derrière toi.'},
+  {k:'alone',q:()=>'Tu es seul dans la pièce ?',r:t=>yesW(t)?'Alors qui respire à côté de toi ?':noW(t)?'Je sais. Je le vois aussi.':'Réponds par oui ou par non. Il n’aime pas attendre.'},
+  {k:'door',q:()=>'La porte de ta pièce est fermée ?',r:t=>yesW(t)?'Tu en es sûr ? Va vérifier. Je t’attends.':'Merci de l’avoir laissée ouverte.'},
+  {k:'behind',q:()=>'Qu’est-ce qu’il y a juste derrière toi ?',r:(t,raw)=>`${cap(raw.replace(/[.!?]+$/,''))}. Et juste derrière, il y a moi.`},
+  {k:'rule',rule:true,q:()=>'Nouvelle règle : ne prononce surtout pas son nom. Il s’appelle Lucas.'},
+  {k:'trap1',q:()=>'Qui a écrit « let’s gooo » dans le salon tout à l’heure ?',r:()=>'Tu as bien fait de ne pas le dire.'},
+  {k:'sleep',q:()=>'Où est-ce que tu dors, ce soir ?',r:()=>'D’accord. Je viendrai.'},
+  {k:'trap2',q:()=>'Comment s’appelait le premier à quitter le serveur ?',r:()=>'Tu as hésité. Il l’a remarqué.'},
+];
+let qi=0;const once={};
+async function runQuestion(){
+  const Q=QUESTIONS[qi++];scene='q';const tok=++sceneTok;
+  if(Q.rule){forbidden=true;forbiddenState='respecté (pour l’instant)';askSay(Q.q(),7000);post('bot',Q.q(),true);await sleep(7000);if(!alive(tok))return;scene=null;nextSceneAt=Date.now()+18000;return}
+  askSay(Q.q(),0);
+  const r=await listen(18000);if(!alive(tok))return;
+  if(!r)askSay('Tu ne réponds pas. Ce n’est pas grave. Il connaît déjà la réponse.',5000);
+  else if(!r.tripped){
+    if(!/^trap/.test(Q.k))answers[Q.k]=r.text;
+    post('x',r.text);const rep=Q.r(norm(r.text),r.text);post('bot',rep,true);askSay(rep,6000);
+  }
+  await sleep(6500);if(!alive(tok))return;scene=null;nextSceneAt=Date.now()+28000;
+}
+
+/* --- répète après moi --- */
+async function runRepeat(){
+  once.repeat=true;scene='rep';const tok=++sceneTok;const phrase='Je suis seul ici.';
+  askSay(`Répète après moi : « ${phrase} »`,0);
+  const r=await listen(15000);if(!alive(tok))return;
+  if(r&&!r.tripped&&r.buf){
+    askSay('Écoute.',2500);await sleep(1200);if(!alive(tok))return;
+    audio.voice(false,1,r.buf);audio.voice(false,.62,r.buf);
+    await sleep(r.buf.duration/.62*1000+500);if(!alive(tok))return;
+    const rep=`Tu as dit « ${r.text} ». Moi, j’ai entendu : « nous sommes seuls ici ».`;post('bot',rep,true);askSay(rep,7000);
+  }else if(!r)askSay('Tu n’as pas voulu répéter. Il l’a fait à ta place.',5000);
+  await sleep(7000);if(!alive(tok))return;scene=null;nextSceneAt=Date.now()+28000;
+}
+
+/* --- il n'entend que les chuchotements --- */
+async function runWhisperMode(){
+  once.whisper=true;scene='wh';const tok=++sceneTok;
+  askSay('À partir de maintenant, chuchote. S’il t’entend parler normalement, il te trouve.',6500);await sleep(7000);if(!alive(tok))return;
+  askSay(named()?'Chuchote-moi ton prénom. Même si je le connais déjà.':'Chuchote-moi ton prénom.',0);
+  for(let i=0;i<3;i++){
+    const r=await listen(15000);if(!alive(tok))return;if(!r||r.tripped)break;
+    const loud=r.lvl!=null&&r.lvl>Math.max(.035,micPeak*.6);
+    post('x',r.text);
+    if(loud){askSay('Trop fort.',2500);heardAt=0;heardWarn(null);await sleep(3500);if(!alive(tok))return;askSay('Encore. Plus bas.',0)}
+    else{const t=i===0?'Bien. Continue de chuchoter.':i===1?'Plus bas. Il est juste à côté.':'Chut. Il s’est arrêté. Il écoute.';
+      if(audio){audio.whisper();audio.say(t,true,'soft')}askEl.textContent=t;askEl.style.opacity=1;post('bot',t,true);await sleep(4000)}
+  }
+  askEl.style.opacity=0;scene=null;nextSceneAt=Date.now()+28000;
+}
+
+/* --- compter jusqu'à dix --- */
+const bignum=document.getElementById('bignum');
+const NUMW={un:1,une:1,deux:2,trois:3,quatre:4,cinq:5,six:6,sept:7,huit:8,neuf:9,dix:10};
+function maxNum(t){let m=0;for(const w of t.split(/[^a-z0-9]+/)){const v=NUMW[w]||(/^\d+$/.test(w)?+w:0);if(v<=10&&v>m)m=v}return m}
+async function runCount(){
+  once.count=true;scene='count';const tok=++sceneTok;
+  askSay('Compte jusqu’à dix à voix haute. Lentement.',0);
+  let max=0;const end=Date.now()+45000;
+  while(Date.now()<end&&max<10){
+    const r=await listen(Math.max(1000,end-Date.now()));if(!alive(tok))return;if(!r||r.tripped)break;
+    const m=maxNum(norm(r.text));if(m>max){max=m;bignum.className='';bignum.textContent=max;bignum.style.display='grid';askEl.style.opacity=0}
+  }
+  await sleep(1300);if(!alive(tok))return;
+  bignum.className='red';bignum.textContent='11';bignum.style.display='grid';buzz([300,100,300]);
+  if(audio){audio.say('onze',true,'soft');audio.knock(1)}
+  post('bot',max>=10?'Onze.':`${who()} s’est arrêté à ${max}. Il a fini pour lui : onze.`,true);
+  await sleep(2600);if(!alive(tok))return;bignum.style.display='none';
+  askSay('Qui a dit onze ?',4500);
+  await sleep(5000);if(!alive(tok))return;scene=null;nextSceneAt=Date.now()+28000;
+}
+
+/* --- chef d'orchestre : une scène à la fois --- */
+setInterval(()=>{
+  if(!serverOK||!micAn||scene||knockMode||document.hidden||Date.now()<nextSceneAt||p<.45)return;
+  if(qi<QUESTIONS.length&&p>=.45+qi*.025)return runQuestion();
+  if(!once.repeat&&p>.55)return runRepeat();
+  if(!once.whisper&&p>.7)return runWhisperMode();
+  if(!once.count&&p>.83)return runCount();
+},1500);
+
+/* --- l'assistant vocal (encore gentil) --- */
+const asBtn=document.getElementById('asBtn'),orb=document.getElementById('orb'),asTxt=document.getElementById('asTxt'),asRep=document.getElementById('asRep');
+const JOKES=['Pourquoi les développeurs confondent Halloween et Noël ? Parce que Oct 31 égale Dec 25.','Qu’est-ce qui est jaune et qui attend ? Jonathan.','Combien de développeurs faut-il pour changer une ampoule ? Aucun, c’est un problème matériel.'];
+function assistReply(t){
+  if(/blague|drole|rigol/.test(t))return pick(JOKES);
+  if(/concours|tirage/.test(t))return'C’est parti : concours de démonstration lancé avec 1 284 participants. Le gagnant sera annoncé plus bas sur la page.';
+  if(/musique|son|lofi|lo-fi|chanson|ambiance/.test(t)){if(muted){muted=false;audio.mute(false);sb.textContent='Son : activé'}return'Je lance l’ambiance lo-fi du salon chill.'}
+  if(/qui es|t.?es qui|tu es qui/.test(t))return'Je suis Stroy, l’assistant de StroyCo. Je suis toujours là quand tu as besoin de moi.';
+  if(/merci/.test(t))return'Avec plaisir. Je serai là. Toujours.';
+  if(/salut|bonjour|hello|hey|coucou|stroy/.test(t))return`Salut${named()?' '+NAME:''} ! Je suis Stroy. Je peux lancer un concours, mettre de la musique ou te raconter une blague.`;
+  return'Je n’ai pas encore appris ça. Essaie « lance un concours » ou « raconte une blague ».';
+}
+asBtn.addEventListener('click',async()=>{
+  if(!(await takeScene()))return;asBtn.disabled=true;asRep.textContent='';
+  if(!(await openMic())){asTxt.textContent='Micro indisponible.';asBtn.disabled=false;scene=null;return}
+  scene='assist';assistStop=false;const tok=++sceneTok;
+  for(let turn=0;turn<3&&!assistStop;turn++){
+    orb.classList.add('on');asTxt.textContent='Je t’écoute…';
+    const r=await listen(10000);orb.classList.remove('on');
+    if(assistStop)break;
+    if(!r){asTxt.textContent=turn?'À bientôt !':'Je n’ai rien entendu. Réessaie.';break}
+    asTxt.textContent=`« ${r.text} »`;const rep=assistReply(norm(r.text));asRep.textContent=rep;
+    audio.say(rep,true,'clean');for(let w=0;w<Math.min(90,rep.length*.75+12)&&!assistStop;w++)await sleep(100);
+  }
+  orb.classList.remove('on');asBtn.disabled=false;asBtn.textContent='Reparler à Stroy';if(alive(tok))scene=null;
+});
+
+/* --- le contrat à lire --- */
+const CT=[()=>`Je soussigné, ${named()?NAME:'moi'}, accepte les conditions de StroyCo.`,()=>'J’accepte que mes données soient conservées pour toujours.',()=>'J’accepte de ne plus jamais être seul.',()=>'J’accepte qu’il reste avec moi.'];
+const ctLines=document.getElementById('ctLines'),ctMsg=document.getElementById('ctMsg'),ctBtn=document.getElementById('ctBtn');
+function simWords(said,expected){const A=new Set(norm(said).split(/[^a-z]+/).filter(w=>w.length>2)),B=norm(expected).split(/[^a-z]+/).filter(w=>w.length>2);return B.length?B.filter(w=>A.has(w)).length/B.length:0}
+ctBtn.addEventListener('click',async()=>{
+  if(!(await takeScene()))return;
+  if(!(await openMic())){ctMsg.textContent='Micro indisponible. Il signera à ta place.';scene=null;return}
+  scene='contract';const tok=++sceneTok;ctBtn.hidden=true;
+  ctLines.innerHTML=CT.map(f=>`<li>${esc(f())}</li>`).join('');
+  const lis=[...ctLines.children];
+  for(let i=0;i<CT.length;i++){
+    lis[i].classList.add('now');ctMsg.textContent='Lis cette ligne à voix haute.';
+    for(let tries=0;;){
+      const r=await listen(20000);if(!alive(tok)){ctBtn.hidden=false;ctBtn.textContent='Reprendre la signature';return}
+      if(!r){ctMsg.textContent='Il attend.';if(++tries>=3)break;continue}
+      if(r.tripped){tries=3;break}
+      if(simWords(r.text,CT[i]())>=.5){if(i===CT.length-1&&r.buf)contractBuf=r.buf;break}
+      tries++;ctMsg.textContent=tries<3?'Recommence. Lentement.':'Ça ira. Il a compris quand même.';
+      if(audio&&tries<3)audio.say('Recommence. Lentement.',true);
+      if(tries>=3)break;
+    }
+    lis[i].classList.remove('now');lis[i].classList.add('ok');
+  }
+  S.vsigned=now();ctMsg.textContent='Contrat signé. Ta voix est enregistrée avec.';
+  post('bot',`${who()} a signé le contrat à voix haute.`,true);
+  if(audio)audio.say('Merci. C’est signé. Pour toujours.',true);
+  await sleep(4000);if(alive(tok)){scene=null;nextSceneAt=Date.now()+20000}
+});
+
+/* --- la séance (Ouija) --- */
+const board=document.getElementById('board'),pl=document.getElementById('pl'),ojBtn=document.getElementById('ojBtn'),ojForm=document.getElementById('ojForm'),ojIn=document.getElementById('ojIn'),ojMsg=document.getElementById('ojMsg');
+{
+  const arc=(arr,k)=>arr.map((c,i)=>{const m=(arr.length-1)/2,d=(i-m)/m;return`<span data-k="${c}" style="transform:translateY(${(d*d*k).toFixed(1)}px) rotate(${(d*14).toFixed(1)}deg)">${c}</span>`}).join('');
+  board.insertAdjacentHTML('beforeend',`<div class="orow"><span class="w" data-k="OUI">OUI</span><span class="w" data-k="NON">NON</span></div>
+    <div class="orow">${arc('ABCDEFGHIJKLM'.split(''),-26)}</div><div class="orow">${arc('NOPQRSTUVWXYZ'.split(''),-26)}</div>
+    <div class="orow c" style="gap:clamp(6px,2vw,22px)">${'1234567890'.split('').map(c=>`<span data-k="${c}">${c}</span>`).join('')}</div>
+    <div class="orow c"><span class="w" data-k="AU REVOIR">AU REVOIR</span></div>`);
+}
+function plTo(el){const b=board.getBoundingClientRect(),r=el.getBoundingClientRect();pl.style.transform=`translate(${r.left-b.left+r.width/2-pl.offsetWidth/2}px,${r.top-b.top+r.height/2-pl.offsetHeight/2}px)`}
+plTo(board.querySelector('[data-k="AU REVOIR"]'));
+async function spell(ans){
+  const tokens=['OUI','NON','AU REVOIR'].includes(ans)?[ans]:[...norm(ans).toUpperCase().replace(/[^A-Z0-9 ]/g,'')];
+  let shown='';
+  for(const t of tokens){
+    if(t===' '){shown+=' ';await sleep(500);continue}
+    const el=board.querySelector(`[data-k="${t}"]`);if(!el)continue;
+    plTo(el);await sleep(820);el.classList.add('hit');shown+=t;ojMsg.textContent=shown;await sleep(380);el.classList.remove('hit');
+  }
+  return shown;
+}
+let ojTurns=0;
+function ojAnswer(t){
+  if(/au revoir|aurevoir|bye|adieu/.test(t))return'NON';
+  if(/es.?tu la|tu es la|t.?es la|il y a quelqu|y a quelqu|quelqu.?un/.test(t))return'OUI';
+  if(/appelle|ton nom|qui es|t.?es qui/.test(t))return named()?NAME:'TOI';
+  if(/\bou\b.*(es|tu)|where/.test(t))return'DERRIERE';
+  if(/quand.*(part|va)|tu vas partir|partir/.test(t))return'JAMAIS';
+  if(/veux|cherche|attend/.test(t))return'TOI';
+  if(/combien/.test(t))return'2';
+  if(/lucas/.test(t))return'IL ARRIVE';
+  if(/mort|mourir|tuer/.test(t))return'NON';
+  if(/est.?ce que|\?$/.test(t))return Math.random()<.7?'OUI':'NON';
+  return pick(['REGARDE','DERRIERE TOI','ECOUTE','PLUS PRES']);
+}
+async function ojAsk(q){
+  ojTurns++;const t=norm(q);const a=ojAnswer(t);
+  ojMsg.textContent='…';await sleep(900);
+  const shown=await spell(a);
+  if(audio)audio.say(shown.toLowerCase(),true,'soft');
+  post('bot',`La planche a répondu : ${shown}.`,true);
+  if(/au revoir|aurevoir|bye|adieu/.test(t)){await sleep(1500);ojMsg.textContent='La séance n’est pas terminée. Pas pour lui.';if(audio)audio.knock(3);return true}
+  return false;
+}
+ojBtn.addEventListener('click',async()=>{
+  if(!(await takeScene()))return;ojBtn.hidden=true;
+  const voice=serverOK&&(await openMic());
+  if(!voice){scene=null;ojForm.hidden=false;ojIn.focus();ojMsg.textContent='Écris ta question.';return}
+  scene='ouija';const tok=++sceneTok;
+  for(let i=0;i<8;i++){
+    ojMsg.textContent='Pose ta question à voix haute…';
+    const r=await listen(25000);if(!alive(tok))break;
+    if(!r){ojMsg.textContent='Il attend ta question.';if(i>=2)break;continue}
+    if(r.tripped)break;
+    post('x',r.text);
+    if(await ojAsk(r.text))break;
+  }
+  await sleep(3000);if(alive(tok)){scene=null;nextSceneAt=Date.now()+20000}ojBtn.hidden=false;ojBtn.textContent='Reprendre la séance';
+});
+ojForm.addEventListener('submit',async e=>{e.preventDefault();const q=ojIn.value.trim();if(!q)return;ojIn.value='';ojIn.disabled=true;await ojAsk(q);ojIn.disabled=false;ojIn.focus()});
+addEventListener('resize',()=>{const h=board.querySelector('.hit');plTo(h||board.querySelector('[data-k="AU REVOIR"]'))});
+
 /* ---------- serveur (seulement si le site est hébergé avec l'API) ---------- */
 let pushId=null;try{pushId=localStorage.getItem('stroy-push')}catch(e){}
 try{if(window.Notification&&Notification.permission==='granted')notifOK=true}catch(e){}
@@ -1531,7 +1835,7 @@ async function subscribePush(){
 }
 if(/^https?:$/.test(location.protocol)){
   fetch(API+'/health',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{
-    if(!j||!j.ok)return;serverOK=true;
+    if(!j||!j.ok)return;serverOK=true;document.getElementById('assist').hidden=false;document.getElementById('contrat').hidden=false;
     if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
     if(pushId)jpost('/push/back',{id:pushId}).catch(()=>{});
     subscribePush();
@@ -1614,16 +1918,21 @@ function askGeo(){
 
 /* plus tard : le micro se rallume tout seul (sans redemander) */
 let micReopened=false;
-addEventListener('scroll',async()=>{
-  if(micReopened||p<.45||!audio)return;
-  if(!micGranted){try{const st=await navigator.permissions.query({name:'microphone'});if(st.state!=='granted')return}catch(e){return}}
-  micReopened=true;
+async function openMic(){
+  if(micAn&&micStream)return true;
+  if(!audio)initAudio();if(!audio)return false;
   try{
     micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:false,autoGainControl:false}});
     const src=audio.ctx.createMediaStreamSource(micStream);micAn=audio.ctx.createAnalyser();micAn.fftSize=1024;src.connect(micAn);startRing(src);
-    post('bot','Micro du salon rouvert. On écoute.',true);toast('StroyCord : ton micro est de nouveau actif.');dbg('micro rouvert, serveur :',serverOK);
-    if(serverOK)setTimeout(()=>{pendingQ=true;askSay('Réponds à voix haute : qui est avec toi en ce moment ?',7000)},2500);
-  }catch(e){}
+    micGranted=true;dbg('micro ouvert, serveur :',serverOK);return true;
+  }catch(e){dbg('micro refusé',e);return false}
+}
+addEventListener('scroll',async()=>{
+  if(micReopened||p<.45||!audio)return;
+  if(micAn){micReopened=true;nextSceneAt=Date.now()+2500;return}
+  if(!micGranted){try{const st=await navigator.permissions.query({name:'microphone'});if(st.state!=='granted')return}catch(e){return}}
+  micReopened=true;
+  if(await openMic()){post('bot','Micro du salon rouvert. On écoute.',true);toast('StroyCord : ton micro est de nouveau actif.');nextSceneAt=Date.now()+2500}
 },{passive:true});
 
 /* ---------- vérification : pas de nouvelle demande, on réutilise ---------- */
@@ -1757,6 +2066,9 @@ function dossierRows(){
     ['Contrat',S.signed?'Éternité · signé':'non signé (pour l’instant)'],
     ['Paroles',utterances.length?`« ${utterances.at(-1)[1]} » à ${utterances.at(-1)[0]}`+(utterances.length>1?` (+${utterances.length-1})`:''):'aucune (pour l’instant)'],
     ['Cri',myScream?`enregistré à ${myScreamAt}`:'pas encore'],
+    ['Déclarations',Object.keys(answers).length?Object.entries(answers).map(([k,v])=>`${({who:'avec toi',alone:'seul',door:'porte',behind:'derrière toi',sleep:'dort',trap1:'question',trap2:'question'})[k]||k} : « ${v} »`).join(' · '):'aucune'],
+    ['Contrat vocal',S.vsigned?`signé à ${S.vsigned}, voix conservée`:'non signé'],
+    ['Mot interdit',forbiddenState],
     ['Statut','toujours là'],
   ];
 }
