@@ -65,7 +65,7 @@ Sans `OLLAMA_URL`, ils utilisent des réponses écrites à la main (et c'est aus
 - Sinon : `docker compose -f docker-compose.yml -f docker-compose.ollama.yml up -d`, puis `docker exec stroyco-horror-ollama ollama pull qwen2.5:1.5b`.
 - Le modèle doit comprendre le français. Défaut : `qwen2.5:1.5b` (~1,2 Go, tient avec Whisper sur un GPU 4 Go). `qwen2.5:3b` (~2,3 Go) parle mieux français si le GPU a la place.
 - `LLM_TIMEOUT` : temps laissé au modèle pour répondre, en secondes (vide = 25). Pendant l'attente, la planchette erre sur les lettres et l'assistant fait patienter ; au-delà, réponses écrites à la main.
-- Contexte limité à 1024 tokens (les échanges sont courts) pour garder le cache mémoire petit.
+- Contexte limité à 2048 tokens (personnage + mémoire des derniers échanges) pour garder le cache mémoire petit (~250 Mo sur un modèle 3B).
 
 ## Notifications push
 

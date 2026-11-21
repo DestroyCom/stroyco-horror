@@ -595,7 +595,7 @@ const slug=()=>NAME.toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g,'')||'to
 const buzz=pt=>{try{navigator.vibrate&&navigator.vibrate(pt)}catch(e){}try{rumble([].concat(pt).reduce((a,b)=>a+b,0))}catch(e){}};
 let visits=1;try{visits=(+localStorage.getItem('stroy-visits')||0)+1;localStorage.setItem('stroy-visits',visits)}catch(e){}
 const boost=Math.min(.22,(visits-1)*.07);
-const S={start:Date.now(),leaves:0,ups:0,clicks:0,idles:0};
+const S={start:Date.now(),leaves:0,ups:0,clicks:0,idles:0,tone:{moqueur:0,apeure:0,vulgaire:0,poli:0,provocateur:0}};
 const ua=navigator.userAgent;
 const dev={os:/Windows/.test(ua)?'Windows':/iPhone|iPad/.test(ua)?'iPhone':/Mac OS X/.test(ua)?'Mac':/Android/.test(ua)?'Android':/Linux/.test(ua)?'Linux':'ton appareil',
   browser:/Edg\//.test(ua)?'Edge':/Firefox\//.test(ua)?'Firefox':/Chrome\//.test(ua)?'Chrome':/Safari\//.test(ua)?'Safari':'ton navigateur',
@@ -1487,10 +1487,10 @@ function voiceReply(t){
   for(const[re,fn]of(typeof BRAIN!=='undefined'?BRAIN:[]))if(re.test(t))return pick(fn());
   return null;
 }
-function heardWarn(text){
+function heardWarn(text,llmReply){
   if(Date.now()<heardAt)return;heardAt=Date.now()+3000;
   if(text)post('x',text);
-  const sp=text?voiceReply(norm(text)):null;
+  const sp=llmReply||(text?voiceReply(norm(text)):null);
   if(sp==='scream'){heardN=0;heardAt=Date.now()+25000;setTimeout(screamer,700);return}
   if(heardN>=WARN.length){heardN=0;heardAt=Date.now()+25000;screamer();return}
   const base=WARN[heardN++]();
@@ -1536,6 +1536,10 @@ async function endUtter(){
   if(text)utterances.push([now(),text]);
   if(text&&forbidden&&/\blucas\b/.test(norm(text))){tripForbidden(text);if(voiceHook)voiceHook({text,lvl:uLvl,buf:uBuf,tripped:true});return}
   if(voiceHook){voiceHook({text,lvl:uLvl,buf:uBuf});return}
+  if(text){feelTone(text);
+    const sp=voiceReply(norm(text));
+    if(llmOK&&sp!=='scream'&&Date.now()>=heardAt){eyes.forEach(e=>e.classList.add('shut'));const r=await llm('talk',text,{timeout:Math.min(llmWait,9000)});eyes.forEach(e=>e.classList.remove('shut'));return heardWarn(text,r)}
+  }
   heardWarn(text||null);
 }
 setInterval(()=>{
@@ -1736,17 +1740,49 @@ setInterval(()=>{
 },1000);
 
 /* --- petit LLM (si l'API en a un), sinon réponses écrites à la main --- */
-async function llm(mode,text){
+/* ton du visiteur, déduit de ce qu'il dit ou écrit */
+const TONES={moqueur:/\b(nul|ridicule|bidon|lol|mdr|ptdr|haha|pff|cringe|fake|ca fait pas peur|meme pas peur|trop facile|naze|eclate)\b/,
+  apeure:/\b(peur|flippe|stop|arrete|au secours|s.?il te plait|pitie|laisse.?moi|j.?ai peur|maman|aide)\b/,
+  vulgaire:/\b(merde|putain|connard|fdp|ntm|tg|ta gueule|nique|bordel|batard|encule)\b/,
+  poli:/\b(s.?il (te|vous) plait|merci|bonjour|bonsoir|pardon|excuse)\b/,
+  provocateur:/\b(viens|montre.?toi|je t.?attends|vas.?y|approche|essaie|cap)\b/};
+function feelTone(text){const t=norm(text);for(const k in TONES)if(TONES[k].test(t))S.tone[k]++}
+/* ce qu'il « sait » du visiteur */
+function buildProfile(){
+  const f=[],h=new Date().getHours();
+  f.push(`il est ${now()}${h<6||h>=23?', il devrait dormir':''}`);
+  f.push(`il utilise ${dev.os} avec ${dev.browser}`);
+  if(visits>1)f.push(`c'est sa ${visits}e visite`);
+  if(dev.battery!=null)f.push(`sa batterie est à ${dev.battery} %`);
+  if(geo)f.push('tu connais sa position exacte');
+  if(profile)f.push('tu as sa photo de profil');
+  if(micBuf||micGranted)f.push('tu as déjà entendu sa voix');
+  if(S.leaves)f.push(`il a quitté l’onglet ${S.leaves} fois`);
+  if(S.idles)f.push(`il s’est figé devant l’écran ${S.idles} fois`);
+  if(S.signed)f.push('le faux curseur a signé l’offre Éternité à sa place');
+  if(S.vsigned)f.push('il a lu le contrat à voix haute');
+  if(/prononc/.test(forbiddenState))f.push('il a prononcé le nom interdit');
+  if(myScream)f.push('il a crié, tu as gardé son cri');
+  if(guided)f.push('tu contrôles maintenant le défilement de sa page');
+  return{facts:f.slice(0,12),answers,tone:S.tone};
+}
+/* niveau de corruption : 0 = Stroy gentil, 1 = « lui » */
+const corruption=()=>Math.min(1,p+(guidedRan?.1:0)+(S.vsigned?.1:0));
+const llmHist={stroy:[],ouija:[]};
+async function llm(mode,text,opt={}){
   if(!llmOK)return null;
-  const t0=Date.now();
+  const t0=Date.now(),fam=mode==='ouija'?'ouija':'stroy';
   try{
-    const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),llmWait+1500);
-    const r=await fetch(API+'/llm',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({mode,text,name:named()?NAME:'',prev:mode==='ouija'?ojPrev.slice(-4):[]}),signal:ctl.signal});
+    const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),opt.timeout||llmWait+1500);
+    const body={mode,text,name:named()?NAME:'',level:+corruption().toFixed(2),profile:buildProfile(),history:llmHist[fam].slice(-4),prev:mode==='ouija'?ojPrev.slice(-4):[]};
+    const r=await fetch(API+'/llm',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),signal:ctl.signal});
     clearTimeout(to);if(!r.ok)return null;const t=((await r.json()).text||'').trim();
-    dbg('LLM',mode,'→',t,`(${Date.now()-t0} ms)`);return t||null;
+    dbg('LLM',mode,'niveau',body.level,'→',t,`(${Date.now()-t0} ms)`);
+    if(t){llmHist[fam].push({q:text.slice(0,200),a:t.slice(0,200)});if(llmHist[fam].length>6)llmHist[fam].shift()}
+    return t||null;
   }catch(e){dbg('LLM indisponible',e);return null}
 }
-/* --- l'assistant vocal (encore gentil) --- */
+/* --- l'assistant vocal --- */
 const asBtn=document.getElementById('asBtn'),orb=document.getElementById('orb'),asTxt=document.getElementById('asTxt'),asRep=document.getElementById('asRep');
 const JOKES=[
   'Pourquoi les développeurs confondent Halloween et Noël ? Parce que Oct 31 égale Dec 25.',
@@ -1793,7 +1829,7 @@ asBtn.addEventListener('click',async()=>{
     if(!r){asTxt.textContent=turn?'À bientôt !':'Je n’ai rien entendu. Réessaie.';break}
     asTxt.textContent=`« ${r.text} »`;orb.classList.add('on');asRep.textContent='Stroy réfléchit…';
     const filler=setTimeout(()=>{if(audio)audio.say(pick(['Une seconde.','Laisse-moi réfléchir.','Je cherche.']),true,'clean')},3500);
-    const rep=(await llm(p<.35?'assist':'assist_dark',r.text))||assistReply(norm(r.text));clearTimeout(filler);orb.classList.remove('on');if(!alive(tok))break;asRep.textContent=rep;
+    feelTone(r.text);const rep=(await llm('assist',r.text))||assistReply(norm(r.text));clearTimeout(filler);orb.classList.remove('on');if(!alive(tok))break;asRep.textContent=rep;
     audio.say(rep,true,'clean');for(let w=0;w<Math.min(90,rep.length*.75+12)&&!assistStop;w++)await sleep(100);
   }
   orb.classList.remove('on');asBtn.disabled=false;asBtn.textContent='Reparler à Stroy';if(alive(tok))scene=null;
@@ -1886,7 +1922,7 @@ function ojAnswer(t){
     'MENTEUR','DEMANDE LUI','TU SAIS','BIENTOT','OUVRE','ETEINS','DERRIERE LA PORTE','DANS LE MIROIR','1285']);
 }
 async function ojAsk(q){
-  ojTurns++;const t=norm(q);
+  ojTurns++;const t=norm(q);feelTone(q);
   ojMsg.textContent='…';pl.classList.add('think');
   let wandering=true,w0=Date.now();
   const letters=[...board.querySelectorAll('[data-k]')];

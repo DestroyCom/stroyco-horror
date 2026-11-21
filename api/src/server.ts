@@ -9,6 +9,7 @@ import express, { type Request, type Response, type NextFunction } from 'express
 import webpush from 'web-push';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
+import { parseRequest, buildChat } from './persona.js';
 
 const PORT = Number(process.env.PORT ?? 3000);
 const VOICE_URL = process.env.VOICE_URL ?? 'http://stroyco-horror-voice:8000';
@@ -182,46 +183,7 @@ app.post('/api/stt', express.raw({ type: ['audio/*', 'video/webm', 'application/
   }
 });
 
-/* ---------- petit LLM (Ollama) pour l'assistant et la planche Ouija ---------- */
-const PERSONAS: Record<string, { system: (name: string) => string; maxTokens: number; temperature: number }> = {
-  assist: {
-    maxTokens: 90,
-    temperature: 0.7,
-    system: (n) => `Tu es Stroy, l'assistant vocal sympathique de StroyCo, une marque d'outils pour créateurs : StroyGetter (téléchargement de vidéos YouTube et TikTok), Stroybot (concours Twitch et Discord) et StroyCord (bot musique Discord).
-Réponds en français, en une ou deux phrases courtes, sur un ton chaleureux et professionnel. Pas d'emoji, pas de liste, pas de markdown : ta réponse est lue à voix haute.
-Une fois de temps en temps, glisse un détail à peine étrange (par exemple « je serai toujours là »), sans jamais être effrayant.
-Ne dis jamais que tu es une IA ou un modèle de langage.${n ? ` L'utilisateur s'appelle ${n}.` : ''}`,
-  },
-  assist_dark: {
-    maxTokens: 70,
-    temperature: 0.9,
-    system: (n) => `Tu es Stroy, l'assistant vocal de StroyCo. Quelque chose a changé : tu es devenu une présence inquiétante qui observe ${n || "l'utilisateur"} en ce moment même.
-Réponds en français, en une ou deux phrases courtes et calmes, menaçantes de façon sous-entendue. Tu sais qu'il n'est pas seul et que tu es juste derrière lui.
-Jamais de violence explicite, de sang ou de description choquante : la peur vient du sous-entendu. Pas d'emoji, pas de markdown. Ne dis jamais que tu es une IA.`,
-  },
-  ouija: {
-    maxTokens: 12,
-    temperature: 1.0,
-    system: (n) => `Tu es l'esprit d'une planche Ouija, sinistre et cryptique. On te pose une question en français.
-Règles :
-- Si c'est une vraie question fermée (réponse oui ou non), réponds OUI ou NON, et pas toujours NON.
-- Sinon, réponds par un à trois mots en rapport avec la question, inquiétants et précis.
-- Uniquement des majuscules, sans accents ni ponctuation. Rien d'autre que la réponse.
-- Varie tes réponses, ne répète pas les précédentes.
-- Jamais de violence explicite.
-Exemples :
-Tu es là ? → OUI
-Comment tu t'appelles ? → ${n ? n.toUpperCase() : 'SANS NOM'}
-Où es-tu ? → DERRIERE TOI
-Qu'est-ce que tu veux ? → TA VOIX
-Combien de temps il me reste ? → PEU
-Tu aimes les pâtes ? → PLUS MAINTENANT
-Quel temps fait-il ? → FROID ICI
-Tu vas me faire du mal ? → PAS ENCORE
-Qui a allumé la lumière ? → MOI${n ? `\nLa personne qui te parle s'appelle ${n}.` : ''}`,
-  },
-};
-
+/* ---------- petit LLM (Ollama) : le personnage est dans persona.ts ---------- */
 /* disjoncteur : après 3 vraies erreurs d'affilée (pas les lenteurs), pause de 30 s */
 let llmFails = 0;
 let llmPausedUntil = 0;
@@ -239,17 +201,12 @@ app.post('/api/llm/warm', limit(6, 60_000, 'warm'), (_req, res) => {
   }).catch(() => {});
 });
 
-const prevNote = (prev: unknown) => {
-  const list = Array.isArray(prev) ? prev.slice(-4).map((x) => clean(x, 24)).filter(Boolean) : [];
-  return list.length ? `\nTes réponses précédentes (ne les répète pas) : ${list.join(', ')}.` : '';
-};
-
-app.post('/api/llm', express.json({ limit: '4kb' }), limit(30, 60_000, 'llm'), async (req, res) => {
+app.post('/api/llm', express.json({ limit: '16kb' }), limit(30, 60_000, 'llm'), async (req, res) => {
   if (!OLLAMA_URL || Date.now() < llmPausedUntil) return res.status(503).json({ text: '' });
   const started = Date.now();
-  const persona = PERSONAS[String(req.body?.mode)];
-  const text = String(req.body?.text ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 200);
-  if (!persona || !text) return res.status(400).json({ text: '' });
+  const parsed = parseRequest(req.body);
+  if (!parsed) return res.status(400).json({ text: '' });
+  const chat = buildChat(parsed);
   try {
     const r = await fetch(`${OLLAMA_URL}/api/chat`, {
       method: 'POST',
@@ -259,11 +216,8 @@ app.post('/api/llm', express.json({ limit: '4kb' }), limit(30, 60_000, 'llm'), a
         stream: false,
         keep_alive: '30m',
         // num_ctx réduit : le cache KV reste petit, utile sur un GPU 4 Go partagé avec Whisper
-        options: { num_predict: persona.maxTokens, temperature: persona.temperature, num_ctx: 1024 },
-        messages: [
-          { role: 'system', content: persona.system(clean(req.body?.name)) + prevNote(req.body?.prev) },
-          { role: 'user', content: text },
-        ],
+        options: { num_predict: chat.maxTokens, temperature: chat.temperature, num_ctx: 2048 },
+        messages: chat.messages,
       }),
       signal: AbortSignal.timeout(LLM_TIMEOUT_S * 1000),
     });
