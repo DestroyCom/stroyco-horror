@@ -201,10 +201,24 @@ Jamais de violence explicite, de sang ou de description choquante : la peur vien
   },
   ouija: {
     maxTokens: 12,
-    temperature: 0.9,
-    system: (n) => `Tu es l'esprit d'une planche Ouija. On te pose une question.
-Réponds UNIQUEMENT par : OUI, NON, AU REVOIR, un nombre, ou un à trois mots en majuscules, sans accents ni ponctuation. Rien d'autre.
-Tu es sinistre et cryptique, jamais explicitement violent.${n ? ` La personne qui te parle s'appelle ${n}.` : ''}`,
+    temperature: 1.0,
+    system: (n) => `Tu es l'esprit d'une planche Ouija, sinistre et cryptique. On te pose une question en français.
+Règles :
+- Si c'est une vraie question fermée (réponse oui ou non), réponds OUI ou NON, et pas toujours NON.
+- Sinon, réponds par un à trois mots en rapport avec la question, inquiétants et précis.
+- Uniquement des majuscules, sans accents ni ponctuation. Rien d'autre que la réponse.
+- Varie tes réponses, ne répète pas les précédentes.
+- Jamais de violence explicite.
+Exemples :
+Tu es là ? → OUI
+Comment tu t'appelles ? → ${n ? n.toUpperCase() : 'SANS NOM'}
+Où es-tu ? → DERRIERE TOI
+Qu'est-ce que tu veux ? → TA VOIX
+Combien de temps il me reste ? → PEU
+Tu aimes les pâtes ? → PLUS MAINTENANT
+Quel temps fait-il ? → FROID ICI
+Tu vas me faire du mal ? → PAS ENCORE
+Qui a allumé la lumière ? → MOI${n ? `\nLa personne qui te parle s'appelle ${n}.` : ''}`,
   },
 };
 
@@ -225,6 +239,11 @@ app.post('/api/llm/warm', limit(6, 60_000, 'warm'), (_req, res) => {
   }).catch(() => {});
 });
 
+const prevNote = (prev: unknown) => {
+  const list = Array.isArray(prev) ? prev.slice(-4).map((x) => clean(x, 24)).filter(Boolean) : [];
+  return list.length ? `\nTes réponses précédentes (ne les répète pas) : ${list.join(', ')}.` : '';
+};
+
 app.post('/api/llm', express.json({ limit: '4kb' }), limit(30, 60_000, 'llm'), async (req, res) => {
   if (!OLLAMA_URL || Date.now() < llmPausedUntil) return res.status(503).json({ text: '' });
   const started = Date.now();
@@ -242,7 +261,7 @@ app.post('/api/llm', express.json({ limit: '4kb' }), limit(30, 60_000, 'llm'), a
         // num_ctx réduit : le cache KV reste petit, utile sur un GPU 4 Go partagé avec Whisper
         options: { num_predict: persona.maxTokens, temperature: persona.temperature, num_ctx: 1024 },
         messages: [
-          { role: 'system', content: persona.system(clean(req.body?.name)) },
+          { role: 'system', content: persona.system(clean(req.body?.name)) + prevNote(req.body?.prev) },
           { role: 'user', content: text },
         ],
       }),

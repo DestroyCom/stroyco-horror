@@ -1249,7 +1249,7 @@ addEventListener('scroll',()=>{
   }
 },{passive:true});
 addEventListener('wheel',e=>{
-  if(guided||reduce||p<.9||e.deltaY>=0)return;
+  if(guided||guidedRan||reduce||p<.9||e.deltaY>=0)return;
   if(Math.random()<.35){e.preventDefault();scrollBy(0,160)}
 },{passive:false});
 
@@ -1741,7 +1741,7 @@ async function llm(mode,text){
   const t0=Date.now();
   try{
     const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),llmWait+1500);
-    const r=await fetch(API+'/llm',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({mode,text,name:named()?NAME:''}),signal:ctl.signal});
+    const r=await fetch(API+'/llm',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({mode,text,name:named()?NAME:'',prev:mode==='ouija'?ojPrev.slice(-4):[]}),signal:ctl.signal});
     clearTimeout(to);if(!r.ok)return null;const t=((await r.json()).text||'').trim();
     dbg('LLM',mode,'→',t,`(${Date.now()-t0} ms)`);return t||null;
   }catch(e){dbg('LLM indisponible',e);return null}
@@ -1849,7 +1849,7 @@ async function spell(ans){
   }
   return shown;
 }
-let ojTurns=0;
+let ojTurns=0;const ojPrev=[];
 const OJ=[
   [/au revoir|aurevoir|bye|adieu/,()=>'NON'],
   [/lucas/,()=>'IL ARRIVE'],
@@ -1894,9 +1894,13 @@ async function ojAsk(q){
     if(wandering&&Date.now()-w0>7000&&ojMsg.textContent==='…'){ojMsg.textContent='Il cherche…';if(audio)audio.whisper()}
     if(wandering&&Date.now()-w0>15000&&ojMsg.textContent==='Il cherche…'){ojMsg.textContent='Il hésite. Ne bouge pas.';if(audio)audio.knock(1)}}})();
   let a=/au revoir|aurevoir|bye|adieu|lucas/.test(t)?null:await llm('ouija',q);
+  const closedQ=/^(est.?ce|es.?tu|etes|tu |t.?es|il |elle |on |suis|sommes|y a|vas|va |peux|veux.?tu|as.?tu|connais|aimes|crois|sais|vois|entends|existe)|\b(oui ou non)\b/.test(t);
   wandering=false;pl.classList.remove('think');
   if(a){a=norm(a).toUpperCase().replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim().split(' ').slice(0,3).join(' ').slice(0,18);if(/^(OUI|NON|AU REVOIR)$/.test(a)===false&&a.length<2)a=null}
+  if(a&&/^(OUI|NON)$/.test(a)&&!closedQ)a=null;                       /* OUI/NON à une question ouverte : non */
+  if(a&&a===ojPrev.at(-1))a=null;                                       /* même réponse deux fois de suite : non */
   a=a||ojAnswer(t);
+  ojPrev.push(a);
   await sleep(400);
   const shown=await spell(a);
   if(audio)audio.say(shown.toLowerCase(),true,'soft');
@@ -1991,15 +1995,20 @@ const STEPS=[
   },
   async()=>{const el=await goTo('reflet',3000);if(!el)return;await glide(topOf(el)+innerHeight*.35,2500);await sleep(11500);await panThrough(el,4000)},
   async()=>{const el=await goTo('fin',2500);if(!el)return;await panThrough(el,26000);await sleep(2000);await glide(maxY(),3000);await sleep(3500)},
-  async()=>{for(let i=0;i<3;i++){await glide(maxY(),2500);await sleep(3000)}},
+  async()=>{for(let i=0;i<2;i++){await glide(maxY(),2500);await sleep(2500)}releaseScroll()},
 ];
 async function startGuided(){
   if(guided||startedOnce&&guidedRan)return;guided=true;guidedRan=true;startedOnce=true;R.classList.add('guided');
   askSay('À partir de maintenant, c’est lui qui choisit où tu regardes.',5000);
   post('bot',`${who()} ne contrôle plus la page.`,true);if(audio)audio.whisper();
   await sleep(5500);
-  for(const step of STEPS){try{await step()}catch(e){dbg('étape',e)}}
-  guided=false;R.classList.remove('guided');
+  const watchdog=setTimeout(releaseScroll,9*60000);   /* filet : jamais plus de 9 min bloqué */
+  for(const step of STEPS){if(!guided)break;try{await step()}catch(e){dbg('étape',e)}}
+  clearTimeout(watchdog);releaseScroll();
+}
+function releaseScroll(){
+  if(!guided)return;
+  guided=false;cancelAnimationFrame(glideRAF);R.classList.remove('guided');R.style.overflow='';B.style.touchAction='';
   toast('Tu peux remonter, maintenant. Si tu y arrives.');
 }
 /* sur écran tactile (pas de faux curseur) : la carte « Éternité » suffit */
@@ -2358,6 +2367,7 @@ function reply(raw){
 window.parler=window.dire=window.talk=(m='…')=>reply(m);
 setTimeout(()=>console.log('%cTu peux me parler. Tape un mot (bonjour, qui, pourquoi, aide…) ou parler("ton message").','color:#777;font:13px monospace'),1200);
 
+window.__stroyGuide={start:()=>startGuided(),release:()=>releaseScroll()};
 window.__stroy=()=>({serverOK,micAn:!!micAn,ring:!!ring,utter:utterances.length,scream:!!myScream,heardN});
 onScroll();
 requestAnimationFrame(frame);
