@@ -26,8 +26,12 @@ function loadVapid(): Keys {
     return JSON.parse(fs.readFileSync(VAPID_FILE, 'utf8')) as Keys;
   } catch {
     const k = webpush.generateVAPIDKeys();
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-    fs.writeFileSync(VAPID_FILE, JSON.stringify(k));
+    try {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+      fs.writeFileSync(VAPID_FILE, JSON.stringify(k));
+    } catch (err) {
+      console.warn(`[api] impossible d'écrire ${VAPID_FILE} (${(err as Error).message}). Clés gardées en mémoire : les abonnements push seront perdus au redémarrage. Donne le dossier à l'uid 1000 (chown 1000:1000).`);
+    }
     return k;
   }
 }
