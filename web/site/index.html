@@ -798,7 +798,7 @@ document.addEventListener('visibilitychange',()=>{
     document.title=p<.2?'Bon retour sur StroyCo !':(named()?`Tu es revenu, ${NAME}.`:'Tu es revenu.');
     setTimeout(onScroll,2500);
     if(p>.3){
-      if(audio){audio.scream(.7);setTimeout(()=>audio.say(`Tu es parti ${away} secondes. Moi, je n'ai pas bougé.`),1500)}
+      if(audio){audio.scream(.7);setTimeout(()=>audio.say(`Tu es parti ${away} secondes. Moi, je n'ai pas bougé.`,true),1500)}
       if(p>.45)peek(true);
     }
   }
@@ -951,7 +951,7 @@ function initAudio(){
     },60);
     const curve=new Float32Array(1024).map((_,i)=>Math.tanh((i/512-1)*6));
     const pan=v=>{const n=ctx.createStereoPanner?ctx.createStereoPanner():ctx.createGain();if(n.pan)n.pan.value=v;n.connect(master);return n};
-    const ttsCache=new Map();
+    const ttsCache=new Map();let speakEnd=0,sayNext=null;
     const verb=ctx.createConvolver();{const L=ctx.sampleRate*2.6,ir=ctx.createBuffer(2,L,ctx.sampleRate);for(let c=0;c<2;c++){const d=ir.getChannelData(c);for(let i=0;i<L;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/L,3.2)}verb.buffer=ir}
     audio={
       ctx,
@@ -1021,11 +1021,18 @@ function initAudio(){
         const g=ctx.createGain();g.gain.value=2.2;const f=ctx.createBiquadFilter();f.type='lowpass';f.frequency.value=2400;
         src.connect(f).connect(g).connect(pn).connect(master);src.start();selfNoise(buf.duration/src.playbackRate.value*1000+800);
       },
-      say(txt){
+      say(txt,prio){
         if(muted)return;
         const t=txt||((named()&&Math.random()<.5?NAME+'. ':'')+PHR[Math.random()*PHR.length|0]);
-        const local=()=>{if(!('speechSynthesis' in window))return;try{const u=new SpeechSynthesisUtterance(t);u.lang='fr-FR';u.pitch=.1;u.rate=.6;u.volume=.8;speechSynthesis.speak(u);selfNoise(t.length*120+1000)}catch(e){}};
-        if(serverOK)audio.tts(t).catch(local);else local();
+        if(Date.now()<speakEnd){if(prio)sayNext=t;return}
+        speakEnd=Date.now()+9000;
+        const done=ms=>{speakEnd=Date.now()+ms;setTimeout(()=>{if(sayNext&&Date.now()>=speakEnd){const n=sayNext;sayNext=null;audio.say(n,true)}},ms+50)};
+        const local=()=>{
+          if(!('speechSynthesis' in window)){speakEnd=0;return}
+          try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='fr-FR';u.pitch=.1;u.rate=.6;u.volume=.8;
+            u.onend=u.onerror=()=>done(300);speechSynthesis.speak(u);selfNoise(t.length*120+1000)}catch(e){speakEnd=0}
+        };
+        if(serverOK)audio.tts(t).then(ms=>done(ms+300)).catch(local);else local();
       },
       async tts(text){
         let buf=ttsCache.get(text);
@@ -1035,15 +1042,14 @@ function initAudio(){
           if(ttsCache.size>80)ttsCache.delete(ttsCache.keys().next().value);ttsCache.set(text,buf);
         }
         const pn=pan(rnd(-.35,.35)),f=ctx.createBiquadFilter();f.type='lowpass';f.frequency.value=3400;
-        const dry=ctx.createGain();dry.gain.value=1.5;const wet=ctx.createGain();wet.gain.value=.55;
+        const dry=ctx.createGain();dry.gain.value=1.6;const wet=ctx.createGain();wet.gain.value=.3;
         f.connect(dry).connect(pn);f.connect(verb).connect(wet).connect(pn);
         const a=ctx.createBufferSource();a.buffer=buf;a.playbackRate.value=.86;a.connect(f);
-        const b=ctx.createBufferSource();b.buffer=buf;b.playbackRate.value=.64;const bg=ctx.createGain();bg.gain.value=.3;b.connect(bg).connect(f);
-        a.start();b.start();selfNoise(buf.duration/.64*1000+600);
+        a.start();const ms=buf.duration/.86*1000;selfNoise(ms+600);return ms;
       },
-      mute(m){master.gain.setTargetAtTime(m?0:1,ctx.currentTime,.05);if(m&&window.speechSynthesis)speechSynthesis.cancel()}
+      mute(m){master.gain.setTargetAtTime(m?0:1,ctx.currentTime,.05);if(m&&window.speechSynthesis){speechSynthesis.cancel();speakEnd=0}}
     };
-    for(const[m,ms]of[['scream',3000],['whisper',2600],['knock',1800],['steps',6000],['breath',3500],['beat',500]]){const f=audio[m];audio[m]=function(...a){selfNoise(ms);return f.apply(audio,a)}}
+    for(const[m,ms]of[['scream',3000],['whisper',2600],['knock',1800],['steps',6000]]){const f=audio[m];audio[m]=function(...a){selfNoise(ms);return f.apply(audio,a)}}
     audio.update();sb.textContent='Son : activé';
   }catch(e){sb.textContent='Son indisponible'}
 }
@@ -1112,7 +1118,7 @@ function live(){
     const o=observations();
     if(o.length){const[k,t]=pick(o);said.set(k,Date.now());post('bot',t,true);
       if(!chatVisible&&Math.random()<.6)toast('Stroybot dans #concours : '+t);
-      if(audio&&Math.random()<.25)audio.say(t)}
+      if(audio&&Math.random()<.12)audio.say(t)}
   }
   setTimeout(live,rnd(7000,12000));
 }
@@ -1389,32 +1395,59 @@ function heardWarn(text){
   const base=WARN[heardN++]();
   warnShow(base,heardN);
   eyes.forEach(e=>e.classList.add('shut'));setTimeout(()=>eyes.forEach(e=>e.classList.remove('shut')),180);
-  if(audio){audio.mute(true);setTimeout(()=>{audio.mute(muted);audio.say(sp?`${sp} ${base}`:(text&&heardN>1?`Tu as dit : ${text}. ${base}`:base))},1400)}
+  if(audio){audio.mute(true);setTimeout(()=>{audio.mute(muted);audio.say(sp?`${sp} ${base}`:(text&&heardN>1?`Tu as dit : ${text}. ${base}`:base),true)},1400)}
   post('bot',sp||[`${who()} parle. On l’entend.`,`${who()} parle encore. Deuxième avertissement.`,`${who()} : dernier avertissement. La prochaine fois, on vient.`][heardN-1],true);
   buzz(120*heardN);
 }
-let recOn=false,mrec=null,recChunks=[],lastLoud=0,recT0=0;
-function startUtter(){
-  try{recOn=true;recT0=Date.now();recChunks=[];mrec=new MediaRecorder(micStream);mrec.ondataavailable=e=>recChunks.push(e.data);mrec.onstop=onUtter;mrec.start()}catch(e){recOn=false}
+let recOn=false,mrec=null,recChunks=[],lastLoud=0,recT0=0,sttBusy=false,pendingQ=false;
+const dbg=(...a)=>console.debug('[stroyco]',...a);
+function encodeWav(f32,sr){
+  const b=new ArrayBuffer(44+f32.length*2),v=new DataView(b),w=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i))};
+  w(0,'RIFF');v.setUint32(4,36+f32.length*2,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,f32.length*2,true);
+  for(let i=0;i<f32.length;i++){const x=Math.max(-1,Math.min(1,f32[i]));v.setInt16(44+i*2,x<0?x*32768:x*32767,true)}
+  return new Blob([b],{type:'audio/wav'});
 }
-async function onUtter(){
-  const type=(mrec&&mrec.mimeType)||'audio/webm',blob=new Blob(recChunks,{type});
+function startUtter(){
+  recOn=true;recT0=Date.now();dbg('voix détectée, enregistrement');
+  if(ring)return;
+  try{recChunks=[];mrec=new MediaRecorder(micStream);mrec.ondataavailable=e=>recChunks.push(e.data);mrec.start()}catch(e){recOn=false}
+}
+async function endUtter(){
+  recOn=false;
+  let blob;
+  if(ring){
+    const sr=audio.ctx.sampleRate,secs=Math.min(4.8,(Date.now()-recT0)/1000+.5),n=Math.floor(secs*sr),L=ring.length,out=new Float32Array(n);
+    for(let i=0;i<n;i++)out[i]=ring[(ringPos-n+i+L)%L];
+    blob=encodeWav(out,sr);
+  }else{
+    if(!mrec)return;await new Promise(r=>{mrec.onstop=r;try{mrec.stop()}catch(e){r()}});
+    blob=new Blob(recChunks,{type:(mrec.mimeType||'audio/webm')});
+  }
   if(blob.size<2500)return;
+  sttBusy=true;dbg('envoi à Whisper',Math.round(blob.size/1024)+' Ko');
   let text='';
-  try{const r=await fetch(API+'/stt',{method:'POST',headers:{'content-type':type.split(';')[0]},body:blob});if(r.ok)text=((await r.json()).text||'').trim()}catch(e){}
+  try{const r=await fetch(API+'/stt',{method:'POST',headers:{'content-type':blob.type.split(';')[0]},body:blob});if(r.ok)text=((await r.json()).text||'').trim();else dbg('erreur STT',r.status)}catch(e){dbg('erreur STT',e)}
+  sttBusy=false;dbg('Whisper a compris :',text||'(rien)');
   if(text.length>1)utterances.push([now(),text]);
+  if(pendingQ){
+    pendingQ=false;heardAt=Date.now()+3000;
+    if(text.length>1){post('x',text);const r=named()?`Tu mens, ${NAME}. Il y a quelqu’un juste derrière toi.`:'Tu mens. Il y a quelqu’un juste derrière toi.';post('bot',r,true);askSay(r,5000)}
+    else{const r='Plus fort. Il n’a pas entendu. Lui, si.';askSay(r,4000);pendingQ=true}
+    return;
+  }
   heardWarn(text.length>1?text:null);
 }
 setInterval(()=>{
-  if(!micAn||p<.45||document.hidden||knockMode)return;
-  const quiet=Date.now()<selfUntil,loud=!quiet&&micLevel()>Math.max(.05,micPeak*.45);
+  if(!micAn||p<.45||document.hidden||knockMode||sttBusy)return;
+  const quiet=Date.now()<selfUntil,loud=!quiet&&micLevel()>Math.max(.03,micPeak*.35);
   if(serverOK&&micStream){
     if(loud){lastLoud=Date.now();if(!recOn&&Date.now()>=heardAt)startUtter()}
-    if(recOn&&(Date.now()-lastLoud>1100||Date.now()-recT0>6000)){recOn=false;try{mrec.stop()}catch(e){}}
+    if(recOn&&(Date.now()-lastLoud>1000||Date.now()-recT0>4300))endUtter();
     return;
   }
   if(loud)heardWarn(null);
-},150);
+},120);
 
 /* ---------- ton cri, enregistré ---------- */
 function startRing(src){
@@ -1438,7 +1471,7 @@ function grabScream(){
 
 /* ---------- « frappe deux fois si tu es seul » ---------- */
 const askEl=document.getElementById('ask');let knockDone=false;
-const askSay=(t,ms)=>{askEl.textContent=t;askEl.style.opacity=1;if(audio)audio.say(t);if(ms)setTimeout(()=>askEl.style.opacity=0,ms)};
+const askSay=(t,ms)=>{askEl.textContent=t;askEl.style.opacity=1;if(audio)audio.say(t,true);if(ms)setTimeout(()=>askEl.style.opacity=0,ms)};
 addEventListener('scroll',()=>{if(!knockDone&&micAn&&p>.56&&!document.hidden){knockDone=true;knockGame()}},{passive:true});
 function knockGame(){
   knockMode=true;askSay('Frappe deux fois sur ton bureau si tu es seul.');
@@ -1471,7 +1504,7 @@ function screamer(){
   setTimeout(()=>{B.classList.add('shake');setTimeout(()=>B.classList.toggle('shake',p>.9),900)},700);
 }
 addEventListener('pagehide',()=>{if(micStream)micStream.getTracks().forEach(t=>t.stop())});
-setInterval(()=>{if(micStream&&micAn&&recStart)recT.textContent='MICRO ACTIF · '+recT.textContent.replace(/^MICRO ACTIF · /,'')},1000);
+setInterval(()=>{if(micStream&&micAn&&recStart)recT.textContent=(recOn?'IL T’ÉCOUTE · ':sttBusy?'IL RÉFLÉCHIT · ':'MICRO ACTIF · ')+recT.textContent.replace(/^(MICRO ACTIF|IL T’ÉCOUTE|IL RÉFLÉCHIT) · /,'')},250);
 
 /* ---------- serveur (seulement si le site est hébergé avec l'API) ---------- */
 let pushId=null;try{pushId=localStorage.getItem('stroy-push')}catch(e){}
@@ -1573,11 +1606,14 @@ function askGeo(){
 /* plus tard : le micro se rallume tout seul (sans redemander) */
 let micReopened=false;
 addEventListener('scroll',async()=>{
-  if(micReopened||!micGranted||p<.45)return;micReopened=true;
+  if(micReopened||p<.45||!audio)return;
+  if(!micGranted){try{const st=await navigator.permissions.query({name:'microphone'});if(st.state!=='granted')return}catch(e){return}}
+  micReopened=true;
   try{
     micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:false,autoGainControl:false}});
     const src=audio.ctx.createMediaStreamSource(micStream);micAn=audio.ctx.createAnalyser();micAn.fftSize=1024;src.connect(micAn);startRing(src);
-    post('bot','Micro du salon rouvert. On écoute.',true);toast('StroyCord : ton micro est de nouveau actif.');
+    post('bot','Micro du salon rouvert. On écoute.',true);toast('StroyCord : ton micro est de nouveau actif.');dbg('micro rouvert, serveur :',serverOK);
+    if(serverOK)setTimeout(()=>{pendingQ=true;askSay('Réponds à voix haute : qui est avec toi en ce moment ?',7000)},2500);
   }catch(e){}
 },{passive:true});
 
@@ -1801,7 +1837,7 @@ function reply(raw){
   for(const[re,fn,f]of BRAIN)if(re.test(t)){out=pick(fn());fx=f;break}
   if(!out)out=pick([`« ${raw} ». Répète. … Non, j’ai bien entendu.`,[...raw].reverse().join(''),`Je ne comprends pas « ${raw} ». Mais je comprends pourquoi tu as peur.`]);
   if(talkN===6){out='On a assez parlé. Regarde l’écran.';fx=()=>peek(true)}
-  setTimeout(()=>{console.log('%c'+out,'color:#c00;font:bold 16px monospace');if(audio)audio.say(out);fx&&fx()},rnd(700,1600));
+  setTimeout(()=>{console.log('%c'+out,'color:#c00;font:bold 16px monospace');if(audio)audio.say(out,true);fx&&fx()},rnd(700,1600));
   return '…';
 }
 ['bonjour','salut','coucou','hello','bonsoir','hey','yo','qui','quoi','pourquoi','ou','aide','help','sos','stop','arrete','pardon','desole','sorry','peur','oui','non','toi','moi','exit','quit','sudo','whoami','ls','kill','nom','police','merci','ok','lol','mdr','tg']
