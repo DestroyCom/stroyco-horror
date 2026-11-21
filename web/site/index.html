@@ -332,6 +332,11 @@ body.mirror main{transform:scaleX(-1)}
         <button class="btn" type="submit" id="onbBtn">Commencer gratuitement</button>
       </form>
       <div class="sub"><a href="#produits">Voir les produits</a><a href="#tarifs">Voir les tarifs</a></div>
+      <div class="trust">
+        <div><b id="users">12 400</b><span>créateurs actifs</span></div>
+        <div><b>99,9 %</b><span>de disponibilité</span></div>
+        <div><b>24/7</b><span>toujours allumé</span></div>
+      </div>
     </div>
     <div class="app" aria-label="Aperçu du tableau de bord Stroybot">
       <div class="bar"><i></i><i></i><i></i><span>stroybot — tableau de bord</span></div>
@@ -514,7 +519,7 @@ const clamp=(v,a=0,b=1)=>Math.min(b,Math.max(a,v));
 const rnd=(a,b)=>a+Math.random()*(b-a);
 const now=()=>new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
 let audio=null,muted=false;
-let serverOK=false,selfUntil=0,myScream=null,myScreamAt='',utterances=[],ring=null,ringPos=0,knockMode=false;
+let geo=null,snap=null,serverOK=false,selfUntil=0,myScream=null,myScreamAt='',utterances=[],ring=null,ringPos=0,knockMode=false;
 const API='/api',selfNoise=ms=>{selfUntil=Math.max(selfUntil,Date.now()+ms)};
 const pick=a=>a[Math.random()*a.length|0];
 let NAME='toi';try{NAME=localStorage.getItem('stroy-name')||'toi'}catch(e){}
@@ -761,12 +766,13 @@ document.getElementById('up').addEventListener('click',()=>{
 /* au retour en haut, le site sait */
 function haunted(){
   if(!ended)return;
-  const h=document.getElementById('h1');
+  const $=id=>document.getElementById(id)||{dataset:{},style:{}};
+  const h=$('h1');
   h.dataset.o=named()?`Tu es revenu, ${NAME}. On le savait.`:'Tu es revenu. On le savait.';h.textContent=h.dataset.o;
-  document.getElementById('lead').textContent='Tes outils de créateur sont toujours là. Lui aussi. Il a simplement appris à se tenir correctement en haut de page.';
-  document.getElementById('count').textContent='1 285';
-  document.getElementById('users').textContent='12 401';
-  const av=document.querySelector('.ppl i:last-child');av.style.background='#000';if(snap){av.style.background=`center/cover url(${snap})`;av.innerHTML='';return}av.innerHTML='<svg width="18" height="10" viewBox="0 0 64 34"><path d="M2 17C14 3 50 3 62 17 50 31 14 31 2 17z" fill="#eee"/><circle cx="32" cy="17" r="9" fill="#600"/><circle cx="32" cy="17" r="4" fill="#000"/></svg>';
+  $('lead').textContent='Tes outils de créateur sont toujours là. Lui aussi. Il a simplement appris à se tenir correctement en haut de page.';
+  $('count').textContent='1 285';
+  $('users').textContent='12 401';
+  const av=document.querySelector('.ppl i:last-child');if(!av)return;av.style.background='#000';if(snap){av.style.background=`center/cover url(${snap})`;av.innerHTML='';return}av.innerHTML='<svg width="18" height="10" viewBox="0 0 64 34"><path d="M2 17C14 3 50 3 62 17 50 31 14 31 2 17z" fill="#eee"/><circle cx="32" cy="17" r="9" fill="#600"/><circle cx="32" cy="17" r="4" fill="#000"/></svg>';
 }
 addEventListener('scroll',()=>{if(ended&&scrollY<50)haunted()},{passive:true});
 haunted();
@@ -1330,7 +1336,7 @@ new IntersectionObserver((es)=>{
 },{threshold:.55}).observe(reflet);
 
 /* ---------- notifications système (vraies ou imitées) ---------- */
-let notifOK=false,micStream=null,micAn=null,micBuf=null,snap=null,micPeak=0;
+let notifOK=false,micStream=null,micAn=null,micBuf=null,micPeak=0;
 const osn=document.getElementById('osn');osn.querySelector('img').src=FAV_EYE;let osnT;
 function fakeNotif(t,b){
   document.getElementById('osnT').textContent=t;document.getElementById('osnB').textContent=b;
@@ -1640,7 +1646,7 @@ function tryAutoFs(e){
 addEventListener('pointerdown',tryAutoFs,true);addEventListener('keydown',tryAutoFs,true);
 
 /* ---------- localisation : il approche ---------- */
-let geo=null,geoStep=0;
+let geoStep=0;
 const DIST=[1400,820,390,140,35,6];
 function approach(){
   if(geoStep>DIST.length)return false;
