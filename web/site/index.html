@@ -1530,12 +1530,24 @@ setInterval(()=>{
 },120);
 
 /* ---------- ton cri, enregistré ---------- */
-function startRing(src){
+/* enregistrement continu des 8 dernières secondes (AudioWorklet, repli ScriptProcessor si absent) */
+const RING_WORKLET=`class R extends AudioWorkletProcessor{constructor(){super();this.b=new Float32Array(2048);this.n=0}
+process(i){const c=i[0]&&i[0][0];if(!c)return true;for(let k=0;k<c.length;k++){this.b[this.n++]=c[k];if(this.n===2048){this.port.postMessage(this.b.slice(0));this.n=0}}return true}}
+registerProcessor('stroy-ring',R);`;
+let ringModule=null;
+async function startRing(src){
+  const ctx=audio.ctx,z=ctx.createGain();z.gain.value=0;z.connect(ctx.destination);
+  const push=d=>{for(let i=0;i<d.length;i++){ring[ringPos]=d[i];ringPos=(ringPos+1)%ring.length}};
+  ring=new Float32Array(ctx.sampleRate*8);ringPos=0;
   try{
-    const ctx=audio.ctx,sp=ctx.createScriptProcessor(4096,1,1);ring=new Float32Array(ctx.sampleRate*8);ringPos=0;
-    sp.onaudioprocess=e=>{const d=e.inputBuffer.getChannelData(0);for(let i=0;i<d.length;i++){ring[ringPos]=d[i];ringPos=(ringPos+1)%ring.length}};
-    const z=ctx.createGain();z.gain.value=0;src.connect(sp);sp.connect(z).connect(ctx.destination);
-  }catch(e){}
+    if(!ctx.audioWorklet)throw 0;
+    ringModule=ringModule||ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([RING_WORKLET],{type:'application/javascript'})));
+    await ringModule;
+    const node=new AudioWorkletNode(ctx,'stroy-ring');node.port.onmessage=e=>push(e.data);
+    src.connect(node);node.connect(z);
+  }catch(e){
+    try{const sp=ctx.createScriptProcessor(4096,1,1);sp.onaudioprocess=ev=>push(ev.inputBuffer.getChannelData(0));src.connect(sp);sp.connect(z)}catch(er){ring=null}
+  }
 }
 function grabScream(){
   if(!ring||!audio)return;
