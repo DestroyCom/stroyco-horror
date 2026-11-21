@@ -1349,19 +1349,28 @@ function fakeNotif(t,b){
   osn.classList.add('on');buzz([80,60,80]);if(audio)audio.knock();
   clearTimeout(osnT);osnT=setTimeout(()=>osn.classList.remove('on'),5200);
 }
+/* notifications système : 5 max par session, au moins 25 s d'écart */
+let sysN=0,sysLast=0;try{sysN=+sessionStorage.getItem('stroy-sysn')||0}catch(e){}
 function sysNotif(t,b){
-  if(notifOK&&document.hidden){try{new Notification(t,{body:b,icon:FAV_EYE,tag:'stroy'+Date.now()});return}catch(e){}}
+  if(notifOK&&document.hidden){
+    if(sysN>=5||Date.now()-sysLast<25000)return;
+    sysN++;sysLast=Date.now();try{sessionStorage.setItem('stroy-sysn',sysN)}catch(e){}
+    try{new Notification(t,{body:b,icon:FAV_EYE,tag:'stroyco'});return}catch(e){}
+  }
   if(!document.hidden)fakeNotif(t,b);
 }
-let awayTimers=[];
+/* la série continue d'un départ à l'autre au lieu de repartir de zéro, et s'arrête après la dernière */
+let awayTimers=[],awayIdx=0;
+const AWAY=[
+  ()=>['Stroybot · Concours de Noël',`${named()?NAME+', tu':'Tu'} as gagné. Reviens chercher ton lot.`],
+  ()=>['Stroybot','Pourquoi tu as fermé l’onglet ? On te voit toujours.'],
+  ()=>['Numéro masqué','Je suis devant ta porte.'],
+  ()=>['StroyCord','Le salon vocal s’est rouvert tout seul. Quelqu’un respire dedans.']];
 document.addEventListener('visibilitychange',()=>{
   awayTimers.forEach(clearTimeout);awayTimers=[];
-  if(!document.hidden||p<.3||!notifOK)return;
-  [[3000,'Stroybot · Concours de Noël',`${named()?NAME+', tu':'Tu'} as gagné. Reviens chercher ton lot.`],
-   [10000,'Stroybot','Pourquoi tu as fermé l’onglet ? On te voit toujours.'],
-   [18000,'Numéro masqué','Je suis devant ta porte.'],
-   [27000,'StroyCord','Le salon vocal s’est rouvert tout seul. Quelqu’un respire dedans.']]
-   .forEach(([d,t,b])=>awayTimers.push(setTimeout(()=>sysNotif(t,b),d)));
+  if(!document.hidden||p<.3||!notifOK||awayIdx>=AWAY.length)return;
+  awayTimers.push(setTimeout(()=>{const[t,b]=AWAY[awayIdx++]();sysNotif(t,b)},4000));
+  if(awayIdx+1<AWAY.length)awayTimers.push(setTimeout(()=>{const[t,b]=AWAY[awayIdx++]();sysNotif(t,b)},35000));
 });
 
 const micData=new Float32Array(1024);
@@ -1693,7 +1702,7 @@ function approach(){
   if(geoStep===2)post('bot',`Position de ${named()?NAME:'toi'} : ${geo.lat.toFixed(4)}, ${geo.lon.toFixed(4)}, à ${geo.acc} m près. Quelqu’un est en route.`,true);
   return true;
 }
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&geo&&notifOK&&p>.4)awayTimers.push(setTimeout(approach,6000))});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&geo&&notifOK&&p>.4)awayTimers.push(setTimeout(approach,18000))});
 
 /* ---------- la souris ne t'appartient plus (pointer lock) ---------- */
 let seized=false;
