@@ -1452,19 +1452,36 @@ function warnShow(msg,lvl){
   setTimeout(()=>{leave.style.display='none';leave.style.fontSize='';leave.textContent='Où tu crois aller ?'},1400+lvl*300);
 }
 const norm=t=>String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+const V=(...a)=>()=>pick(a);
+const DARK=[
+  [/pas peur|meme pas peur|ca fait pas peur|j.?ai pas peur|n.?ai pas peur|nul|ridicule|claque|bidon/,()=>'scream'],
+  [/\bstroy\b/,V('Je ne m’appelle pas comme ça.','Stroy n’est plus là. Il ne reste que moi.','Ne m’appelle plus comme ça.')],
+  [/blague|drole|rigol/,V('Tu veux une blague ? Regarde derrière toi.','Celle-là, tu ne vas pas la trouver drôle.','La blague, c’est que tu es seul. Enfin, tu croyais.')],
+  [/concours|tirage|gagn/,V('Le concours est terminé. Tu as gagné. Viens chercher ton lot.','Il n’y a qu’un seul gagnant. C’est toi. Félicitations.','Ton lot est devant ta porte.')],
+  [/musique|chanson|son|lofi/,V('Écoute bien. Ce n’est plus de la musique.','Le salon vocal ne joue plus qu’une seule chose : ta respiration.','Monte le son. Tu entendras mieux ce qui marche derrière toi.')],
+  [/qui est la|qui est-ce|y a quelqu|il y a quelqu|qui c.?est|t.?es qui|qui es.?tu/,V('Retourne-toi et tu verras.','Quelqu’un qui te connaît très bien.','Le participant numéro 1 285.','Celui qui reste quand tu éteins l’écran.')],
+  [/au secours|aide|help|a l.?aide|sauve/,V('Personne ne viendra. Ils dorment tous.','Crie plus fort. Ça ne changera rien.','L’aide est en route. Elle s’appelle Stroy.')],
+  [/arrete|stop|tais|laisse.?moi|va.?t.?en|degage|casse.?toi/,V('Toi, tais-toi.','Non.','Je partirai quand tu dormiras.','Tu peux fermer l’onglet. Ça ne changera rien.')],
+  [/entends|ecoute/,V('Moi aussi, je t’entends. Très bien.','Je t’entends même quand tu ne dis rien.','Écoute mieux. Il respire.')],
+  [/bonjour|salut|bonsoir|coucou|hello|yo\b/,()=>pick(named()?[`Bonsoir, ${NAME}.`,`Te voilà enfin, ${NAME}.`,`${NAME}. Je t’attendais.`]:['Bonsoir.','Te voilà enfin.','Je t’attendais.'])],
+  [/maman|papa|parents|frere|soeur|police|pompier|17|112/,V('Ils ne t’entendent pas. Moi, si.','Ils dorment. Je suis passé vérifier.','Le 17 sonne occupé ce soir.')],
+  [/pourquoi/,V('Parce que tu as scrollé.','Parce que tu as dit oui à tout.','Parce que tu es resté.')],
+  [/ou es.?tu|t.?es ou|ou tu es/,V('Plus près que tu crois.','Derrière la porte. Non. Plus près.','Juste derrière ton épaule gauche.')],
+  [/quoi|hein|comment/,V('Tu as très bien entendu.','Je ne répéterai pas.','Regarde l’écran.')],
+  [/pardon|desole|excuse/,V('Ça ne suffit pas.','Trop tard pour t’excuser.')],
+  [/merci/,V('Ne me remercie pas encore.','Garde tes remerciements pour la fin.')],
+  [/je t.?aime/,V('Moi aussi. C’est pour ça que je reste.')],
+  [/\boui\b|ouais/,V('Bien.','Je savais.','Bonne réponse.')],
+  [/\bnon\b|nan/,V('Si.','Tu dis toujours ça.','Menteur.')],
+  [/seul/,V('Tu ne l’es plus.','Personne n’est seul ici.')],
+  [/porte/,V('Ne la regarde pas.','Elle est ouverte. Tu le sais.')],
+  [/dormir|dodo|sommeil|fatigue/,V('Vas-y. Dors. Je veille.','Ferme les yeux. Je reste.')],
+  [/lumiere|noir|eteins|allume/,V('Laisse la lumière éteinte. Il préfère.','Allumer ne changera rien.')],
+  [/mort|mourir|tuer|sang/,V('Je ne parle pas de ça. Je parle de toi.','Tu poses de drôles de questions.')],
+];
 function voiceReply(t){
-  if(/\bstroy\b/.test(t))return'Je ne m’appelle pas comme ça.';
-  if(/blague/.test(t))return'Tu veux une blague ? Regarde derrière toi.';
-  if(/concours|tirage/.test(t))return'Le concours est terminé. Tu as gagné. Viens chercher ton lot.';
-  if(/musique|chanson/.test(t))return'Écoute bien. Ce n’est plus de la musique.';
-  if(/pas peur|meme pas peur|ca fait pas peur|j.?ai pas peur|n.?ai pas peur|nul|ridicule/.test(t))return'scream';
-  if(/qui est la|qui est-ce|y a quelqu|il y a quelqu/.test(t))return'Retourne-toi et tu verras.';
-  if(/au secours|aide|help|a l.?aide/.test(t))return'Personne ne viendra. Ils dorment tous.';
-  if(/arrete|stop|tais/.test(t))return'Toi, tais-toi.';
-  if(/entends/.test(t))return'Moi aussi, je t’entends. Très bien.';
-  if(/bonjour|salut|bonsoir|coucou/.test(t))return named()?`Bonsoir, ${NAME}.`:'Bonsoir.';
-  if(named()&&t.includes(norm(NAME)))return'Oui. C’est ton nom. Je le connais.';
-  if(/maman|papa|police/.test(t))return'Ils ne t’entendent pas. Moi, si.';
+  if(named()&&t.includes(norm(NAME)))return pick(['Oui. C’est ton nom. Je le connais.','Ne dis pas ton nom trop fort. Il l’apprend.']);
+  for(const[re,fn]of DARK)if(re.test(t))return fn();
   for(const[re,fn]of(typeof BRAIN!=='undefined'?BRAIN:[]))if(re.test(t))return pick(fn());
   return null;
 }
@@ -1727,15 +1744,39 @@ async function llm(mode,text){
 }
 /* --- l'assistant vocal (encore gentil) --- */
 const asBtn=document.getElementById('asBtn'),orb=document.getElementById('orb'),asTxt=document.getElementById('asTxt'),asRep=document.getElementById('asRep');
-const JOKES=['Pourquoi les développeurs confondent Halloween et Noël ? Parce que Oct 31 égale Dec 25.','Qu’est-ce qui est jaune et qui attend ? Jonathan.','Combien de développeurs faut-il pour changer une ampoule ? Aucun, c’est un problème matériel.'];
+const JOKES=[
+  'Pourquoi les développeurs confondent Halloween et Noël ? Parce que Oct 31 égale Dec 25.',
+  'Qu’est-ce qui est jaune et qui attend ? Jonathan.',
+  'Combien de développeurs faut-il pour changer une ampoule ? Aucun, c’est un problème matériel.',
+  'Pourquoi le streamer a-t-il froid ? Parce qu’il a laissé ses fenêtres ouvertes. Enfin, ses onglets.',
+  'J’ai voulu raconter une blague sur UDP. Mais je ne suis pas sûr que tu la reçoives.',
+  'Un bot Discord rentre dans un bar. Il attend qu’on le mentionne.',
+  'Quel est le comble pour un téléchargeur de vidéos ? Rester bloqué à 99 pour cent.',
+  'Pourquoi les fantômes sont de mauvais menteurs ? Parce qu’on voit à travers.',
+];
+const SOFT=[
+  [/blague|drole|rigol|marrant/,()=>pick(JOKES)],
+  [/concours|tirage|giveaway/,V('C’est parti : concours de démonstration lancé avec 1 284 participants. Le gagnant sera annoncé plus bas sur la page.','Concours lancé ! Tirage au sort équitable, participants vérifiés. Résultat un peu plus bas.')],
+  [/musique|son|lofi|lo-fi|chanson|ambiance|playlist/,()=>{if(audio&&muted){muted=false;audio.mute(false);sb.textContent='Son : activé'}return pick(['Je lance l’ambiance lo-fi du salon chill.','Musique lancée. Parfait pour une soirée tranquille.'])}],
+  [/stroygetter|telecharg|youtube|tiktok|video/,V('StroyGetter télécharge tes vidéos YouTube et TikTok en un clic, dans la qualité que tu veux.','Pour télécharger une vidéo, colle simplement le lien dans StroyGetter. Je m’occupe du reste.')],
+  [/stroybot|twitch|discord/,V('Stroybot organise tes concours sur Twitch et Discord, avec un tirage équitable.','Stroybot gère les participations, vérifie les comptes et tire au sort pour toi.')],
+  [/stroycord|bot musique|vocal/,V('StroyCord met de la musique dans tes salons vocaux Discord, vingt-quatre heures sur vingt-quatre.','StroyCord ne s’arrête jamais. Même quand tu dors.')],
+  [/prix|tarif|combien|gratuit|abonnement|pro/,V('L’offre gratuite suffit pour commencer. Le Pro est à 4 euros 99 par mois. Et il existe une offre spéciale, plus bas.','Tu as un mois de Pro offert si tu termines la configuration.')],
+  [/heure|quelle heure/,()=>`Il est ${now()}. ${new Date().getHours()<6?'Tu devrais dormir, tu sais.':'Bonne soirée à toi.'}`],
+  [/date|jour|aujourd/,()=>`Nous sommes le ${new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}.`],
+  [/meteo|temps qu.?il fait|pluie|soleil|beau|froid|chaud|dehors|neige/,V('Je ne vois pas dehors. Enfin, pas encore.','Je n’ai pas de fenêtre. Mais toi, tu en as une derrière toi.')],
+  [/qui es|t.?es qui|tu es qui|presente/,V('Je suis Stroy, l’assistant de StroyCo. Je suis toujours là quand tu as besoin de moi.','Je suis Stroy. Je t’aide à gérer tes outils de créateur. Et je ne dors jamais.')],
+  [/ca va|comment vas|tu vas bien/,V('Très bien, merci. Je suis content que tu sois là.','Ça va. Je t’attendais.')],
+  [/age|quel age/,V('Je suis né avec StroyCo. Mais j’ai l’impression d’avoir toujours été là.')],
+  [/aime|prefere|favori/,V('J’aime quand tu restes un peu plus longtemps.','Ma chose préférée, c’est quand les gens reviennent.')],
+  [/aide|help|que sais.?tu|tu peux faire|quoi faire/,V('Je peux lancer un concours, mettre de la musique, te parler de StroyGetter, Stroybot et StroyCord, ou te raconter une blague.')],
+  [/merci/,V('Avec plaisir. Je serai là. Toujours.','De rien. Reviens quand tu veux. Je ne bouge pas.')],
+  [/au revoir|bye|a plus|ciao|bonne nuit/,V('À bientôt. Je garde un œil sur ton espace.','Bonne nuit. Je reste allumé.')],
+  [/salut|bonjour|hello|hey|coucou|stroy/,()=>`Salut${named()?' '+NAME:''} ! Je suis Stroy. Je peux lancer un concours, mettre de la musique ou te raconter une blague.`],
+];
 function assistReply(t){
-  if(/blague|drole|rigol/.test(t))return pick(JOKES);
-  if(/concours|tirage/.test(t))return'C’est parti : concours de démonstration lancé avec 1 284 participants. Le gagnant sera annoncé plus bas sur la page.';
-  if(/musique|son|lofi|lo-fi|chanson|ambiance/.test(t)){if(muted){muted=false;audio.mute(false);sb.textContent='Son : activé'}return'Je lance l’ambiance lo-fi du salon chill.'}
-  if(/qui es|t.?es qui|tu es qui/.test(t))return'Je suis Stroy, l’assistant de StroyCo. Je suis toujours là quand tu as besoin de moi.';
-  if(/merci/.test(t))return'Avec plaisir. Je serai là. Toujours.';
-  if(/salut|bonjour|hello|hey|coucou|stroy/.test(t))return`Salut${named()?' '+NAME:''} ! Je suis Stroy. Je peux lancer un concours, mettre de la musique ou te raconter une blague.`;
-  return'Je n’ai pas encore appris ça. Essaie « lance un concours » ou « raconte une blague ».';
+  for(const[re,fn]of SOFT)if(re.test(t))return fn();
+  return pick(['Je n’ai pas encore appris ça. Essaie « lance un concours » ou « raconte une blague ».','Bonne question. Je te réponds plus tard. J’ai le temps.','Je ne suis pas sûr de comprendre. Demande-moi plutôt de lancer un concours.']);
 }
 asBtn.addEventListener('click',async()=>{
   if(!(await takeScene()))return;asBtn.disabled=true;asRep.textContent='';
@@ -1804,18 +1845,37 @@ async function spell(ans){
   return shown;
 }
 let ojTurns=0;
+const OJ=[
+  [/au revoir|aurevoir|bye|adieu/,()=>'NON'],
+  [/lucas/,()=>'IL ARRIVE'],
+  [/es.?tu la|tu es la|t.?es la|il y a quelqu|y a quelqu|quelqu.?un|present/,()=>pick(['OUI','OUI','TOUJOURS'])],
+  [/appelle|ton nom|qui es|t.?es qui|qui est/,()=>named()?pick([NAME,NAME,'COMME TOI']):pick(['TOI','PERSONNE'])],
+  [/\bou\b|where/,()=>pick(['DERRIERE','DERRIERE TOI','ICI','SOUS LE LIT','DANS LA PIECE'])],
+  [/quand.*(part|va)|tu vas partir|partir|t.?en aller/,()=>pick(['JAMAIS','JAMAIS','APRES TOI'])],
+  [/quand/,()=>pick(['BIENTOT','CE SOIR','MAINTENANT','DEMAIN 3H'])],
+  [/veux|cherche|attend|desire/,()=>pick(['TOI','TA VOIX','ENTRER','TON NOM'])],
+  [/combien.*(personne|gens|on est|vous)/,()=>'2'],
+  [/combien/,()=>pick(['2','3','1285'])],
+  [/pourquoi/,()=>pick(['TU AS APPELE','TU ES RESTE','TU AS SIGNE'])],
+  [/comment.*(mort|mourir)|mort|mourir|tuer/,()=>pick(['NON','PAS CE SOIR','DEMANDE AUTRE'])],
+  [/age|quel age/,()=>pick(['1285','TROP VIEUX','SANS AGE'])],
+  [/seul/,()=>pick(['NON','JAMAIS SEUL'])],
+  [/porte/,()=>pick(['OUVERTE','REGARDE','NE BOUGE PAS'])],
+  [/peur/,()=>pick(['OUI','TU DEVRAIS'])],
+  [/vois|voir|regarde/,()=>pick(['OUI','TOUT','TES YEUX'])],
+  [/entends|ecoute/,()=>pick(['OUI','TA RESPIRATION','TON COEUR'])],
+  [/aime/,()=>pick(['OUI','TROP'])],
+  [/mal|blesser|faire du mal/,()=>pick(['NON','PAS ENCORE'])],
+  [/gentil|ami|copain/,()=>pick(['NON','PEUT ETRE'])],
+  [/vrai|reel|existe/,()=>pick(['OUI','RETOURNE TOI'])],
+  [/aide|secours/,()=>pick(['NON','PERSONNE'])],
+  [/stroy/,()=>pick(['PAS STROY','IL EST PARTI'])],
+  [/merci/,()=>pick(['DE RIEN','PAS ENCORE'])],
+  [/est.?ce que|\?$|^(tu|il|elle|on|je|suis|est|y a)\b/,()=>Math.random()<.65?'OUI':'NON'],
+];
 function ojAnswer(t){
-  if(/au revoir|aurevoir|bye|adieu/.test(t))return'NON';
-  if(/es.?tu la|tu es la|t.?es la|il y a quelqu|y a quelqu|quelqu.?un/.test(t))return'OUI';
-  if(/appelle|ton nom|qui es|t.?es qui/.test(t))return named()?NAME:'TOI';
-  if(/\bou\b.*(es|tu)|where/.test(t))return'DERRIERE';
-  if(/quand.*(part|va)|tu vas partir|partir/.test(t))return'JAMAIS';
-  if(/veux|cherche|attend/.test(t))return'TOI';
-  if(/combien/.test(t))return'2';
-  if(/lucas/.test(t))return'IL ARRIVE';
-  if(/mort|mourir|tuer/.test(t))return'NON';
-  if(/est.?ce que|\?$/.test(t))return Math.random()<.7?'OUI':'NON';
-  return pick(['REGARDE','DERRIERE TOI','ECOUTE','PLUS PRES']);
+  for(const[re,fn]of OJ)if(re.test(t))return fn();
+  return pick(['REGARDE','DERRIERE TOI','ECOUTE','PLUS PRES','PAS ICI','IL VIENT','NE BOUGE PAS']);
 }
 async function ojAsk(q){
   ojTurns++;const t=norm(q);
